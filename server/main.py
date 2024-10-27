@@ -1,10 +1,11 @@
-import json
+import os
 
 from elasticsearch import Elasticsearch
 from fastapi import FastAPI, HTTPException
 from starlette.responses import PlainTextResponse
 
-es = Elasticsearch(["http://localhost:9200"])
+ES_HOSTS = os.getenv("ES_HOSTS", "http://localhost:9200")
+es = Elasticsearch([ES_HOSTS])
 
 app = FastAPI()
 
