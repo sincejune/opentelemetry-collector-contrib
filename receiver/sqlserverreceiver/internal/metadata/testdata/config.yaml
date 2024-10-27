@@ -33,6 +33,12 @@ all_set:
       enabled: true
     sqlserver.processes.blocked:
       enabled: true
+    sqlserver.query.sample:
+      enabled: true
+    sqlserver.query.sample2:
+      enabled: true
+    sqlserver.query.sample3:
+      enabled: true
     sqlserver.resource_pool.disk.throttled.read.rate:
       enabled: true
     sqlserver.resource_pool.disk.throttled.write.rate:
@@ -95,6 +101,12 @@ none_set:
     sqlserver.page.split.rate:
       enabled: false
     sqlserver.processes.blocked:
+      enabled: false
+    sqlserver.query.sample:
+      enabled: false
+    sqlserver.query.sample2:
+      enabled: false
+    sqlserver.query.sample3:
       enabled: false
     sqlserver.resource_pool.disk.throttled.read.rate:
       enabled: false

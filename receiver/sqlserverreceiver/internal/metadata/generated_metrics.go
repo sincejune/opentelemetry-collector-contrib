@@ -917,6 +917,195 @@ func newMetricSqlserverProcessesBlocked(cfg MetricConfig) metricSqlserverProcess
 	return m
 }
 
+type metricSqlserverQuerySample struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills sqlserver.query.sample metric with initial data.
+func (m *metricSqlserverQuerySample) init() {
+	m.data.SetName("sqlserver.query.sample")
+	m.data.SetDescription("A query sample")
+	m.data.SetUnit("count")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSqlserverQuerySample) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, nowAttributeValue string, queryStartAttributeValue string, userNameAttributeValue string, lastRequestStartTimeAttributeValue string, databaseNameAttributeValue string, idAttributeValue string, lastRequestEndTimeAttributeValue string, sessionStatusAttributeValue string, requestStatusAttributeValue string, statementTextAttributeValue string, textAttributeValue string, clientPortAttributeValue string, clientAddressAttributeValue string, hostNameAttributeValue string, programNameAttributeValue string, isUserProcessAttributeValue string, commandAttributeValue string, blockingSessionIDAttributeValue string, waitTypeAttributeValue string, waitTimeAttributeValue string, lastWaitTimeAttributeValue string, waitResourceAttributeValue string, openTransactionCountAttributeValue string, transactionIDAttributeValue string, percentCompleteAttributeValue string, estimatedCompletionTimeAttributeValue string, cpuTimeAttributeValue string, totalElapsedTimeAttributeValue string, readsAttributeValue string, writesAttributeValue string, logicalReadsAttributeValue string, transactionIsolationLevelAttributeValue string, lockTimeoutAttributeValue string, deadlockPriorityAttributeValue string, queryHashAttributeValue string, queryPlanHashAttributeValue string, contextInfoAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("now", nowAttributeValue)
+	dp.Attributes().PutStr("query_start", queryStartAttributeValue)
+	dp.Attributes().PutStr("user_name", userNameAttributeValue)
+	dp.Attributes().PutStr("last_request_start_time", lastRequestStartTimeAttributeValue)
+	dp.Attributes().PutStr("database_name", databaseNameAttributeValue)
+	dp.Attributes().PutStr("id", idAttributeValue)
+	dp.Attributes().PutStr("last_request_end_time", lastRequestEndTimeAttributeValue)
+	dp.Attributes().PutStr("session_status", sessionStatusAttributeValue)
+	dp.Attributes().PutStr("request_status", requestStatusAttributeValue)
+	dp.Attributes().PutStr("statement_text", statementTextAttributeValue)
+	dp.Attributes().PutStr("text", textAttributeValue)
+	dp.Attributes().PutStr("client_port", clientPortAttributeValue)
+	dp.Attributes().PutStr("client_address", clientAddressAttributeValue)
+	dp.Attributes().PutStr("host_name", hostNameAttributeValue)
+	dp.Attributes().PutStr("program_name", programNameAttributeValue)
+	dp.Attributes().PutStr("is_user_process", isUserProcessAttributeValue)
+	dp.Attributes().PutStr("command", commandAttributeValue)
+	dp.Attributes().PutStr("blocking_session_id", blockingSessionIDAttributeValue)
+	dp.Attributes().PutStr("wait_type", waitTypeAttributeValue)
+	dp.Attributes().PutStr("wait_time", waitTimeAttributeValue)
+	dp.Attributes().PutStr("last_wait_time", lastWaitTimeAttributeValue)
+	dp.Attributes().PutStr("wait_resource", waitResourceAttributeValue)
+	dp.Attributes().PutStr("open_transaction_count", openTransactionCountAttributeValue)
+	dp.Attributes().PutStr("transaction_id", transactionIDAttributeValue)
+	dp.Attributes().PutStr("percent_complete", percentCompleteAttributeValue)
+	dp.Attributes().PutStr("estimated_completion_time", estimatedCompletionTimeAttributeValue)
+	dp.Attributes().PutStr("cpu_time", cpuTimeAttributeValue)
+	dp.Attributes().PutStr("total_elapsed_time", totalElapsedTimeAttributeValue)
+	dp.Attributes().PutStr("reads", readsAttributeValue)
+	dp.Attributes().PutStr("writes", writesAttributeValue)
+	dp.Attributes().PutStr("logical_reads", logicalReadsAttributeValue)
+	dp.Attributes().PutStr("transaction_isolation_level", transactionIsolationLevelAttributeValue)
+	dp.Attributes().PutStr("lock_timeout", lockTimeoutAttributeValue)
+	dp.Attributes().PutStr("deadlock_priority", deadlockPriorityAttributeValue)
+	dp.Attributes().PutStr("query_hash", queryHashAttributeValue)
+	dp.Attributes().PutStr("query_plan_hash", queryPlanHashAttributeValue)
+	dp.Attributes().PutStr("context_info", contextInfoAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSqlserverQuerySample) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSqlserverQuerySample) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSqlserverQuerySample(cfg MetricConfig) metricSqlserverQuerySample {
+	m := metricSqlserverQuerySample{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
+type metricSqlserverQuerySample2 struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills sqlserver.query.sample2 metric with initial data.
+func (m *metricSqlserverQuerySample2) init() {
+	m.data.SetName("sqlserver.query.sample2")
+	m.data.SetDescription("A query sample")
+	m.data.SetUnit("count")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSqlserverQuerySample2) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("str", strAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSqlserverQuerySample2) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSqlserverQuerySample2) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSqlserverQuerySample2(cfg MetricConfig) metricSqlserverQuerySample2 {
+	m := metricSqlserverQuerySample2{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
+type metricSqlserverQuerySample3 struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills sqlserver.query.sample3 metric with initial data.
+func (m *metricSqlserverQuerySample3) init() {
+	m.data.SetName("sqlserver.query.sample3")
+	m.data.SetDescription("A query sample")
+	m.data.SetUnit("count")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSqlserverQuerySample3) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("str", strAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSqlserverQuerySample3) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSqlserverQuerySample3) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSqlserverQuerySample3(cfg MetricConfig) metricSqlserverQuerySample3 {
+	m := metricSqlserverQuerySample3{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
 type metricSqlserverResourcePoolDiskThrottledReadRate struct {
 	data     pmetric.Metric // data buffer for generated metric.
 	config   MetricConfig   // metric config provided by user.
@@ -1486,6 +1675,9 @@ type MetricsBuilder struct {
 	metricSqlserverPageOperationRate                  metricSqlserverPageOperationRate
 	metricSqlserverPageSplitRate                      metricSqlserverPageSplitRate
 	metricSqlserverProcessesBlocked                   metricSqlserverProcessesBlocked
+	metricSqlserverQuerySample                        metricSqlserverQuerySample
+	metricSqlserverQuerySample2                       metricSqlserverQuerySample2
+	metricSqlserverQuerySample3                       metricSqlserverQuerySample3
 	metricSqlserverResourcePoolDiskThrottledReadRate  metricSqlserverResourcePoolDiskThrottledReadRate
 	metricSqlserverResourcePoolDiskThrottledWriteRate metricSqlserverResourcePoolDiskThrottledWriteRate
 	metricSqlserverTransactionRate                    metricSqlserverTransactionRate
@@ -1539,6 +1731,9 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.Settings, opt
 		metricSqlserverPageOperationRate:                  newMetricSqlserverPageOperationRate(mbc.Metrics.SqlserverPageOperationRate),
 		metricSqlserverPageSplitRate:                      newMetricSqlserverPageSplitRate(mbc.Metrics.SqlserverPageSplitRate),
 		metricSqlserverProcessesBlocked:                   newMetricSqlserverProcessesBlocked(mbc.Metrics.SqlserverProcessesBlocked),
+		metricSqlserverQuerySample:                        newMetricSqlserverQuerySample(mbc.Metrics.SqlserverQuerySample),
+		metricSqlserverQuerySample2:                       newMetricSqlserverQuerySample2(mbc.Metrics.SqlserverQuerySample2),
+		metricSqlserverQuerySample3:                       newMetricSqlserverQuerySample3(mbc.Metrics.SqlserverQuerySample3),
 		metricSqlserverResourcePoolDiskThrottledReadRate:  newMetricSqlserverResourcePoolDiskThrottledReadRate(mbc.Metrics.SqlserverResourcePoolDiskThrottledReadRate),
 		metricSqlserverResourcePoolDiskThrottledWriteRate: newMetricSqlserverResourcePoolDiskThrottledWriteRate(mbc.Metrics.SqlserverResourcePoolDiskThrottledWriteRate),
 		metricSqlserverTransactionRate:                    newMetricSqlserverTransactionRate(mbc.Metrics.SqlserverTransactionRate),
@@ -1656,6 +1851,9 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	mb.metricSqlserverPageOperationRate.emit(ils.Metrics())
 	mb.metricSqlserverPageSplitRate.emit(ils.Metrics())
 	mb.metricSqlserverProcessesBlocked.emit(ils.Metrics())
+	mb.metricSqlserverQuerySample.emit(ils.Metrics())
+	mb.metricSqlserverQuerySample2.emit(ils.Metrics())
+	mb.metricSqlserverQuerySample3.emit(ils.Metrics())
 	mb.metricSqlserverResourcePoolDiskThrottledReadRate.emit(ils.Metrics())
 	mb.metricSqlserverResourcePoolDiskThrottledWriteRate.emit(ils.Metrics())
 	mb.metricSqlserverTransactionRate.emit(ils.Metrics())
@@ -1796,6 +1994,21 @@ func (mb *MetricsBuilder) RecordSqlserverProcessesBlockedDataPoint(ts pcommon.Ti
 	}
 	mb.metricSqlserverProcessesBlocked.recordDataPoint(mb.startTime, ts, val)
 	return nil
+}
+
+// RecordSqlserverQuerySampleDataPoint adds a data point to sqlserver.query.sample metric.
+func (mb *MetricsBuilder) RecordSqlserverQuerySampleDataPoint(ts pcommon.Timestamp, val int64, nowAttributeValue string, queryStartAttributeValue string, userNameAttributeValue string, lastRequestStartTimeAttributeValue string, databaseNameAttributeValue string, idAttributeValue string, lastRequestEndTimeAttributeValue string, sessionStatusAttributeValue string, requestStatusAttributeValue string, statementTextAttributeValue string, textAttributeValue string, clientPortAttributeValue string, clientAddressAttributeValue string, hostNameAttributeValue string, programNameAttributeValue string, isUserProcessAttributeValue string, commandAttributeValue string, blockingSessionIDAttributeValue string, waitTypeAttributeValue string, waitTimeAttributeValue string, lastWaitTimeAttributeValue string, waitResourceAttributeValue string, openTransactionCountAttributeValue string, transactionIDAttributeValue string, percentCompleteAttributeValue string, estimatedCompletionTimeAttributeValue string, cpuTimeAttributeValue string, totalElapsedTimeAttributeValue string, readsAttributeValue string, writesAttributeValue string, logicalReadsAttributeValue string, transactionIsolationLevelAttributeValue string, lockTimeoutAttributeValue string, deadlockPriorityAttributeValue string, queryHashAttributeValue string, queryPlanHashAttributeValue string, contextInfoAttributeValue string) {
+	mb.metricSqlserverQuerySample.recordDataPoint(mb.startTime, ts, val, nowAttributeValue, queryStartAttributeValue, userNameAttributeValue, lastRequestStartTimeAttributeValue, databaseNameAttributeValue, idAttributeValue, lastRequestEndTimeAttributeValue, sessionStatusAttributeValue, requestStatusAttributeValue, statementTextAttributeValue, textAttributeValue, clientPortAttributeValue, clientAddressAttributeValue, hostNameAttributeValue, programNameAttributeValue, isUserProcessAttributeValue, commandAttributeValue, blockingSessionIDAttributeValue, waitTypeAttributeValue, waitTimeAttributeValue, lastWaitTimeAttributeValue, waitResourceAttributeValue, openTransactionCountAttributeValue, transactionIDAttributeValue, percentCompleteAttributeValue, estimatedCompletionTimeAttributeValue, cpuTimeAttributeValue, totalElapsedTimeAttributeValue, readsAttributeValue, writesAttributeValue, logicalReadsAttributeValue, transactionIsolationLevelAttributeValue, lockTimeoutAttributeValue, deadlockPriorityAttributeValue, queryHashAttributeValue, queryPlanHashAttributeValue, contextInfoAttributeValue)
+}
+
+// RecordSqlserverQuerySample2DataPoint adds a data point to sqlserver.query.sample2 metric.
+func (mb *MetricsBuilder) RecordSqlserverQuerySample2DataPoint(ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	mb.metricSqlserverQuerySample2.recordDataPoint(mb.startTime, ts, val, strAttributeValue)
+}
+
+// RecordSqlserverQuerySample3DataPoint adds a data point to sqlserver.query.sample3 metric.
+func (mb *MetricsBuilder) RecordSqlserverQuerySample3DataPoint(ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	mb.metricSqlserverQuerySample3.recordDataPoint(mb.startTime, ts, val, strAttributeValue)
 }
 
 // RecordSqlserverResourcePoolDiskThrottledReadRateDataPoint adds a data point to sqlserver.resource_pool.disk.throttled.read.rate metric.

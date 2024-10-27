@@ -24,7 +24,9 @@ func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
-		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability))
+		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability),
+		receiver.WithLogs(createLogsReceiver, metadata.LogsStability),
+	)
 }
 
 func createDefaultConfig() component.Config {
@@ -39,26 +41,29 @@ func createDefaultConfig() component.Config {
 func setupQueries(cfg *Config) []string {
 	var queries []string
 
-	if isDatabaseIOQueryEnabled(&cfg.MetricsBuilderConfig.Metrics) {
-		queries = append(queries, getSQLServerDatabaseIOQuery(cfg.InstanceName))
-	}
+	queries = append(queries, getSQLQuery(cfg.InstanceName))
+	queries = append(queries, getQQueryPlan())
 
-	if cfg.MetricsBuilderConfig.Metrics.SqlserverBatchRequestRate.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverPageBufferCacheHitRatio.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverResourcePoolDiskThrottledReadRate.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverResourcePoolDiskThrottledWriteRate.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverLockWaitRate.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverProcessesBlocked.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverBatchSQLRecompilationRate.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverBatchSQLCompilationRate.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverUserConnectionCount.Enabled {
+	//if isDatabaseIOQueryEnabled(&cfg.MetricsBuilderConfig.Metrics) {
+	//queries = append(queries, getSQLServerDatabaseIOQuery(cfg.InstanceName))
+	//}
 
-		queries = append(queries, getSQLServerPerformanceCounterQuery(cfg.InstanceName))
-	}
+	//if cfg.MetricsBuilderConfig.Metrics.SqlserverBatchRequestRate.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverPageBufferCacheHitRatio.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverResourcePoolDiskThrottledReadRate.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverResourcePoolDiskThrottledWriteRate.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverLockWaitRate.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverProcessesBlocked.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverBatchSQLRecompilationRate.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverBatchSQLCompilationRate.Enabled ||
+	//	cfg.MetricsBuilderConfig.Metrics.SqlserverUserConnectionCount.Enabled {
 
-	if cfg.MetricsBuilderConfig.Metrics.SqlserverDatabaseCount.Enabled {
-		queries = append(queries, getSQLServerPropertiesQuery(cfg.InstanceName))
-	}
+	// queries = append(queries, getSQLServerPerformanceCounterQuery(cfg.InstanceName))
+	//}
+
+	//if cfg.MetricsBuilderConfig.Metrics.SqlserverDatabaseCount.Enabled {
+	// queries = append(queries, getSQLServerPropertiesQuery(cfg.InstanceName))
+	//}
 
 	return queries
 }

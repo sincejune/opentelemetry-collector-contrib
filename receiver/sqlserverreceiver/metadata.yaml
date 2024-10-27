@@ -4,6 +4,7 @@ status:
   class: receiver
   stability:
     beta: [metrics]
+    alpha: [logs]
   distributions: [contrib]
   codeowners:
     active: [djaglowski, StefanKurek]
@@ -24,6 +25,120 @@ resource_attributes:
     type: string
 
 attributes:
+  str:
+    description: str
+    type: string
+  now:
+    description: now
+    type: string
+  query_start:
+    description: query_start
+    type: string
+  user_name:
+    description: user_name
+    type: string
+  last_request_start_time:
+    description: last_request_start_time
+    type: string
+  database_name:
+    description: database_name
+    type: string
+  id:
+    description: id
+    type: string
+  last_request_end_time:
+    description: last_request_end_time
+    type: string
+  session_status:
+    description: session_status
+    type: string
+  request_status:
+    description: request_status
+    type: string
+  statement_text:
+    description: statement_text
+    type: string
+  text:
+    description: text
+    type: string
+  client_port:
+    description: client_port
+    type: string
+  client_address:
+    description: client_address
+    type: string
+  host_name:
+    description: host_name
+    type: string
+  program_name:
+    description: program_name
+    type: string
+  is_user_process:
+    description: is_user_process
+    type: string
+  command:
+    description: command
+    type: string
+  blocking_session_id:
+    description: blocking_session_id
+    type: string
+  wait_type:
+    description: wait_type
+    type: string
+  wait_time:
+    description: wait_time
+    type: string
+  last_wait_time:
+    description: last_wait_time
+    type: string
+  wait_resource:
+    description: wait_resource
+    type: string
+  open_transaction_count:
+    description: open_transaction_count
+    type: string
+  transaction_id:
+    description: transaction_id
+    type: string
+  percent_complete:
+    description: percent_complete
+    type: string
+  estimated_completion_time:
+    description: estimated_completion_time
+    type: string
+  cpu_time:
+    description: cpu_time
+    type: string
+  total_elapsed_time:
+    description: total_elapsed_time
+    type: string
+  reads:
+    description: reads
+    type: string
+  writes:
+    description: writes
+    type: string
+  logical_reads:
+    description: logical_reads
+    type: string
+  transaction_isolation_level:
+    description: transaction_isolation_level
+    type: string
+  lock_timeout:
+    description: lock_timeout
+    type: string
+  deadlock_priority:
+    description: deadlock_priority
+    type: string
+  query_hash:
+    description: query_hash
+    type: string
+  query_plan_hash:
+    description: query_plan_hash
+    type: string
+  context_info:
+    description: context_info
+    type: string
   page.operations:
     name_override: type
     description: The page operation types.
@@ -46,6 +161,7 @@ attributes:
     description: The direction of flow of bytes or operations.
     type: string
     enum: [read, write]
+
 
 metrics:
   sqlserver.user.connection.count:
@@ -255,7 +371,70 @@ metrics:
       input_type: string
     attributes: [database.status]
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
-
+  sqlserver.query.sample:
+    enabled: true
+    description: A query sample
+    unit: "count"
+    gauge:
+      value_type: int
+    attributes: [
+      "now",
+      "query_start",
+      "user_name",
+      "last_request_start_time",
+      "database_name",
+      "id",
+      "last_request_end_time",
+      "session_status",
+      "request_status",
+      "statement_text",
+      "text",
+      "client_port",
+      "client_address",
+      "host_name",
+      "program_name",
+      "is_user_process",
+      "command",
+      "blocking_session_id",
+      "wait_type",
+      "wait_time",
+      "last_wait_time",
+      "wait_resource",
+      "open_transaction_count",
+      "transaction_id",
+      "percent_complete",
+      "estimated_completion_time",
+      "cpu_time",
+      "total_elapsed_time",
+      "reads",
+      "writes",
+      "logical_reads",
+      "transaction_isolation_level",
+      "lock_timeout",
+      "deadlock_priority",
+      "query_hash",
+      "query_plan_hash",
+      "context_info"
+    ]
+    extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
+  sqlserver.query.sample2:
+    enabled: true
+    description: A query sample
+    unit: "count"
+    gauge:
+      value_type: int
+    attributes: [
+      "str",
+    ]
+  sqlserver.query.sample3:
+    enabled: true
+    description: A query sample
+    unit: "count"
+    gauge:
+      value_type: int
+    attributes: [
+      "str",
+    ]
 tests:
   config:
   goleak:
