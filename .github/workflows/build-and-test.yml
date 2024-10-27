@@ -42,7 +42,7 @@ jobs:
         if: steps.go-cache.outputs.cache-hit != 'true'
         run: make install-tools
       - name: Build
-        run:
+        run: |
           make docker-otelcontribcol
           docker tag otelcontribcol:latest ghcr.io/sincejune/opentelemetry-collector-contrib:latest
           docker push ghcr.io/sincejune/opentelemetry-collector-contrib:latest
