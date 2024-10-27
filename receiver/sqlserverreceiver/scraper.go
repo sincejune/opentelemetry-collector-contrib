@@ -6,6 +6,7 @@ package sqlserverreceiver // import "github.com/open-telemetry/opentelemetry-col
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -84,6 +85,10 @@ func (s *sqlServerScraperHelper) Scrape(ctx context.Context) (pmetric.Metrics, e
 	var err error
 
 	switch s.sqlQuery {
+	case getSQLQuery(s.instanceName):
+		err = s.recordSQL(ctx)
+	case getQQueryPlan():
+		err = s.recordQueryPlan(ctx)
 	case getSQLServerDatabaseIOQuery(s.instanceName):
 		err = s.recordDatabaseIOMetrics(ctx)
 	case getSQLServerPerformanceCounterQuery(s.instanceName):
@@ -297,6 +302,163 @@ func (s *sqlServerScraperHelper) recordDatabaseStatusMetrics(ctx context.Context
 		errs = append(errs, s.mb.RecordSqlserverDatabaseCountDataPoint(now, row[dbOffline], metadata.AttributeDatabaseStatusOffline))
 
 		s.mb.EmitForResource(metadata.WithResource(rb.Emit()))
+	}
+
+	return errors.Join(errs...)
+}
+
+func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
+	// Constants are the column names of the database status
+	const now = "now"
+	const queryStart = "query_start"
+	const userName = "user_name"
+	const lastRequestStartTime = "last_request_start_time"
+	const databaseName = "database_name"
+	const id = "id"
+	const lastRequestEndTime = "last_request_end_time"
+	const sessionStatus = "session_status"
+	const requestStatus = "request_status"
+	const statementText = "statement_text"
+	const text = "text"
+	const clientPort = "client_port"
+	const clientAddress = "client_address"
+	const hostName = "host_name"
+	const programName = "program_name"
+	const isUserProcess = "is_user_process"
+	const command = "command"
+	const blockingSessionId = "blocking_session_id"
+	const waitType = "wait_type"
+	const waitTime = "wait_time"
+	const lastWaitTime = "last_wait_time"
+	const waitResource = "wait_resource"
+	const openTransactionCount = "open_transaction_count"
+	const transactionId = "transaction_id"
+	const percentComplete = "percent_complete"
+	const estimatedCompletionTime = "estimated_completion_time"
+	const cpuTime = "cpu_time"
+	const totalElapsedTime = "total_elapsed_time"
+	const reads = "reads"
+	const writes = "writes"
+	const logicRead = "logicalReads"
+	const transactionIsolationLevel = "transaction_isolation_level"
+	const lockTimeout = "lock_timeout"
+	const deadlockPriority = "deadlock_priority"
+	const queryHash = "query_hash"
+	const queryPlanHash = "query_plan_hash"
+	const contextInfo = "context_info"
+
+	rows, err := s.client.QueryRows(ctx)
+
+	if err != nil {
+		if errors.Is(err, sqlquery.ErrNullValueWarning) {
+			//s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+		} else {
+			return fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
+		}
+	}
+	var errs []error
+	for _, row := range rows {
+		// TODO
+		rb := s.mb.NewResourceBuilder()
+
+		//s.logger.Info(fmt.Sprintf("%v: %v", now, row[now]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", queryStart, row[queryStart]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", userName, row[userName]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", lastRequestStartTime, row[lastRequestStartTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", databaseName, row[databaseName]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", id, row[id]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", lastRequestEndTime, row[lastRequestEndTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", sessionStatus, row[sessionStatus]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", requestStatus, row[requestStatus]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", statementText, row[statementText]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", text, row[text]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", clientPort, row[clientPort]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", clientAddress, row[clientAddress]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", hostName, row[hostName]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", programName, row[programName]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", isUserProcess, row[isUserProcess]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", command, row[command]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", blockingSessionId, row[blockingSessionId]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", waitType, row[waitType]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", waitTime, row[waitTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", lastWaitTime, row[lastWaitTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", waitResource, row[waitResource]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", openTransactionCount, row[openTransactionCount]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", transactionId, row[transactionId]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", percentComplete, row[percentComplete]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", estimatedCompletionTime, row[estimatedCompletionTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", cpuTime, row[cpuTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", totalElapsedTime, row[totalElapsedTime]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", reads, row[reads]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", writes, row[writes]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", logicRead, row[logicRead]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", transactionIsolationLevel, row[transactionIsolationLevel]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", lockTimeout, row[lockTimeout]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", deadlockPriority, row[deadlockPriority]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", queryHash, string(row[queryHash])[:]))
+		s.logger.Info(fmt.Sprintf("%v: %v", queryPlanHash, hex.EncodeToString([]byte(row[queryPlanHash]))))
+		//s.logger.Info(fmt.Sprintf("%v: %v", contextInfo, row[contextInfo]))
+		//
+		//s.mb.RecordSqlserverQuerySampleDataPoint(
+		//	pcommon.NewTimestampFromTime(time.Now()),
+		//	1,
+		//	row[now], row[queryStart], row[userName], row[lastRequestStartTime], row[databaseName], row[id], row[lastRequestEndTime], row[sessionStatus], row[requestStatus], row[statementText], row[text], row[clientPort], row[clientAddress], row[hostName], row[programName], row[isUserProcess], row[command], row[blockingSessionId], row[waitType], row[waitTime], row[lastWaitTime], row[waitResource], row[openTransactionCount], row[transactionId], row[percentComplete], row[estimatedCompletionTime], row[cpuTime], row[totalElapsedTime], row[reads], row[writes], row[logicRead], row[transactionIsolationLevel], row[lockTimeout], row[deadlockPriority], row[queryHash], row[queryPlanHash], row[contextInfo],
+		//)
+
+		s.mb.RecordSqlserverQuerySample2DataPoint(
+			pcommon.NewTimestampFromTime(time.Now()),
+			1,
+			row[statementText],
+		)
+		//s.logger.Info("Recorded metrics...")
+		var resource = rb.Emit()
+		var attributes = resource.Attributes()
+		attributes.PutStr("statement", row[statementText])
+		attributes.PutStr("query_hash", hex.EncodeToString([]byte(row[queryHash])))
+		attributes.PutStr("query_plan_hash", hex.EncodeToString([]byte(row[queryPlanHash])))
+		attributes.PutStr("isplanquery", "no")
+
+		s.mb.EmitForResource(metadata.WithResource(resource))
+	}
+
+	return errors.Join(errs...)
+}
+
+func (s *sqlServerScraperHelper) recordQueryPlan(ctx context.Context) error {
+	// Constants are the column names of the database status
+
+	const queryPlan = "query_plan"
+	const queryHash = "query_hash"
+	const queryPlanHash = "query_plan_hash"
+
+	rows, err := s.client.QueryRows(ctx)
+
+	if err != nil {
+		if errors.Is(err, sqlquery.ErrNullValueWarning) {
+			//s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+		} else {
+			return fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
+		}
+	}
+
+	var errs []error
+	for _, row := range rows {
+		// TODO
+		rb := s.mb.NewResourceBuilder()
+		s.mb.RecordSqlserverQuerySample3DataPoint(
+			pcommon.NewTimestampFromTime(time.Now()),
+			1,
+			row[queryPlan],
+		)
+		//s.logger.Info("Recorded metrics...")
+		var resource = rb.Emit()
+		var attributes = resource.Attributes()
+		attributes.PutStr("query_plan", row[queryPlan])
+		attributes.PutStr("query_hash", hex.EncodeToString([]byte(row[queryHash])))
+		attributes.PutStr("query_plan_hash", hex.EncodeToString([]byte(row[queryPlanHash])))
+		attributes.PutStr("isplanquery", "yes")
+
+		s.mb.EmitForResource(metadata.WithResource(resource))
 	}
 
 	return errors.Join(errs...)

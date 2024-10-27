@@ -118,6 +118,86 @@ This metric is only available when running on Windows.
 | ---- | ----------- | ---------- |
 | {pages}/s | Gauge | Double |
 
+### sqlserver.query.sample
+
+A query sample
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| count | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| now | now | Any Str |
+| query_start | query_start | Any Str |
+| user_name | user_name | Any Str |
+| last_request_start_time | last_request_start_time | Any Str |
+| database_name | database_name | Any Str |
+| id | id | Any Str |
+| last_request_end_time | last_request_end_time | Any Str |
+| session_status | session_status | Any Str |
+| request_status | request_status | Any Str |
+| statement_text | statement_text | Any Str |
+| text | text | Any Str |
+| client_port | client_port | Any Str |
+| client_address | client_address | Any Str |
+| host_name | host_name | Any Str |
+| program_name | program_name | Any Str |
+| is_user_process | is_user_process | Any Str |
+| command | command | Any Str |
+| blocking_session_id | blocking_session_id | Any Str |
+| wait_type | wait_type | Any Str |
+| wait_time | wait_time | Any Str |
+| last_wait_time | last_wait_time | Any Str |
+| wait_resource | wait_resource | Any Str |
+| open_transaction_count | open_transaction_count | Any Str |
+| transaction_id | transaction_id | Any Str |
+| percent_complete | percent_complete | Any Str |
+| estimated_completion_time | estimated_completion_time | Any Str |
+| cpu_time | cpu_time | Any Str |
+| total_elapsed_time | total_elapsed_time | Any Str |
+| reads | reads | Any Str |
+| writes | writes | Any Str |
+| logical_reads | logical_reads | Any Str |
+| transaction_isolation_level | transaction_isolation_level | Any Str |
+| lock_timeout | lock_timeout | Any Str |
+| deadlock_priority | deadlock_priority | Any Str |
+| query_hash | query_hash | Any Str |
+| query_plan_hash | query_plan_hash | Any Str |
+| context_info | context_info | Any Str |
+
+### sqlserver.query.sample2
+
+A query sample
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| count | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| str | str | Any Str |
+
+### sqlserver.query.sample3
+
+A query sample
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| count | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| str | str | Any Str |
+
 ### sqlserver.transaction.rate
 
 Number of transactions started for the database (not including XTP-only transactions).

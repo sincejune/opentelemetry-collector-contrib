@@ -44,6 +44,9 @@ type MetricsConfig struct {
 	SqlserverPageOperationRate                  MetricConfig `mapstructure:"sqlserver.page.operation.rate"`
 	SqlserverPageSplitRate                      MetricConfig `mapstructure:"sqlserver.page.split.rate"`
 	SqlserverProcessesBlocked                   MetricConfig `mapstructure:"sqlserver.processes.blocked"`
+	SqlserverQuerySample                        MetricConfig `mapstructure:"sqlserver.query.sample"`
+	SqlserverQuerySample2                       MetricConfig `mapstructure:"sqlserver.query.sample2"`
+	SqlserverQuerySample3                       MetricConfig `mapstructure:"sqlserver.query.sample3"`
 	SqlserverResourcePoolDiskThrottledReadRate  MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.read.rate"`
 	SqlserverResourcePoolDiskThrottledWriteRate MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.write.rate"`
 	SqlserverTransactionRate                    MetricConfig `mapstructure:"sqlserver.transaction.rate"`
@@ -106,6 +109,15 @@ func DefaultMetricsConfig() MetricsConfig {
 		},
 		SqlserverProcessesBlocked: MetricConfig{
 			Enabled: false,
+		},
+		SqlserverQuerySample: MetricConfig{
+			Enabled: true,
+		},
+		SqlserverQuerySample2: MetricConfig{
+			Enabled: true,
+		},
+		SqlserverQuerySample3: MetricConfig{
+			Enabled: true,
 		},
 		SqlserverResourcePoolDiskThrottledReadRate: MetricConfig{
 			Enabled: false,
