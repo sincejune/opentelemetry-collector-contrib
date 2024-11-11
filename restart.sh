@@ -2,4 +2,4 @@
 set -ex
 
 make docker-otelcontribcol
-docker-compose up -d
+docker-compose up --build -d

@@ -66,3 +66,13 @@ services:
       - ELASTICSEARCH_HOSTS=http://es:9200
     ports:
       - "5601:5601"
+
+  backend:
+    build: ./server
+    container_name: backend
+    environment:
+      ES_HOSTS: http://es:9200
+    ports:
+      - "8000:8000"
+    depends_on:
+      - elasticsearch
