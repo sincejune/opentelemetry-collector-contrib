@@ -2,12 +2,21 @@ import os
 
 from elasticsearch import Elasticsearch
 from fastapi import FastAPI, HTTPException
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import PlainTextResponse
 
 ES_HOSTS = os.getenv("ES_HOSTS", "http://localhost:9200")
 es = Elasticsearch([ES_HOSTS])
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 
 # Perform the search query
@@ -53,6 +62,7 @@ async def query():
 
     return data
 
+
 @app.get("/query/{query_hash}", response_class=PlainTextResponse)
 async def query(query_hash: str):
     query_body = {
@@ -74,7 +84,6 @@ async def query(query_hash: str):
             return {"message": "No documents found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.get("/queryplan")
