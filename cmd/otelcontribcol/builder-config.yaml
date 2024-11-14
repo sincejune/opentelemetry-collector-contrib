@@ -20,6 +20,7 @@ exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.112.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.112.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.112.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.112.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.112.0
