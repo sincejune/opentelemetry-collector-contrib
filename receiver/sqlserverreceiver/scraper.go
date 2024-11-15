@@ -339,7 +339,7 @@ func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
 	const totalElapsedTime = "total_elapsed_time"
 	const reads = "reads"
 	const writes = "writes"
-	const logicRead = "logicalReads"
+	const logicalReads = "logical_reads"
 	const transactionIsolationLevel = "transaction_isolation_level"
 	const lockTimeout = "lock_timeout"
 	const deadlockPriority = "deadlock_priority"
@@ -391,7 +391,7 @@ func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
 		//s.logger.Info(fmt.Sprintf("%v: %v", totalElapsedTime, row[totalElapsedTime]))
 		//s.logger.Info(fmt.Sprintf("%v: %v", reads, row[reads]))
 		//s.logger.Info(fmt.Sprintf("%v: %v", writes, row[writes]))
-		//s.logger.Info(fmt.Sprintf("%v: %v", logicRead, row[logicRead]))
+		//s.logger.Info(fmt.Sprintf("%v: %v", logicalReads, row[logicalReads]))
 		//s.logger.Info(fmt.Sprintf("%v: %v", transactionIsolationLevel, row[transactionIsolationLevel]))
 		//s.logger.Info(fmt.Sprintf("%v: %v", lockTimeout, row[lockTimeout]))
 		//s.logger.Info(fmt.Sprintf("%v: %v", deadlockPriority, row[deadlockPriority]))
@@ -433,6 +433,14 @@ func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
 		if err == nil {
 			attributes.PutInt("cpu_time", v)
 		}
+		v, err = strconv.ParseInt(row[logicalReads], 10, 64)
+		if err == nil {
+			attributes.PutInt(logicalReads, v)
+		} else {
+			attributes.PutInt(logicalReads, 0)
+		}
+		// TODO
+		attributes.PutInt("logical_writes", 0)
 		s.mb.EmitForResource(metadata.WithResource(resource))
 	}
 
