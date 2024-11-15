@@ -418,6 +418,21 @@ func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
 		attributes.PutStr("query_plan_hash", hex.EncodeToString([]byte(row[queryPlanHash])))
 		attributes.PutStr("isplanquery", "no")
 
+		// Add metrics
+		attributes.PutStr("wait_type", row[waitType])
+		v, err := strconv.ParseInt(row[waitTime], 10, 64)
+		if err == nil {
+			attributes.PutInt("wait_time", v)
+		}
+		attributes.PutStr("wait_resource", row[waitResource])
+		v, err = strconv.ParseInt(row[totalElapsedTime], 10, 64)
+		if err == nil {
+			attributes.PutInt("total_elapsed_time", v)
+		}
+		v, err = strconv.ParseInt(row[cpuTime], 10, 64)
+		if err == nil {
+			attributes.PutInt("cpu_time", v)
+		}
 		s.mb.EmitForResource(metadata.WithResource(resource))
 	}
 

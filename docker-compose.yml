@@ -10,20 +10,20 @@ services:
     restart: unless-stopped
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - 3000:3000
-    restart: unless-stopped
-    depends_on:
-      - prometheus
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-    volumes:
-      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+#  grafana:
+#    image: grafana/grafana
+#    container_name: grafana
+#    ports:
+#      - 3000:3000
+#    restart: unless-stopped
+#    depends_on:
+#      - prometheus
+#    environment:
+#      - GF_SECURITY_ADMIN_USER=admin
+#      - GF_SECURITY_ADMIN_PASSWORD=admin
+#      - GF_AUTH_ANONYMOUS_ENABLED=true
+#    volumes:
+#      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:latest
