@@ -388,8 +388,8 @@ INNER JOIN
 CROSS APPLY 
     sys.dm_exec_sql_text(req.sql_handle) qt
 WHERE 
-    sess.session_id != @@SPID
-    AND
+--     sess.session_id != @@SPID
+--     AND
     sess.status != 'sleeping';
 `
 
