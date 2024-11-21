@@ -9,7 +9,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -26,6 +28,8 @@ const (
 	computerNameKey = "computer_name"
 	instanceNameKey = "sql_instance"
 )
+
+var commenterRegex = regexp.MustCompile(`/\*(.*?)\*/`)
 
 type sqlServerScraperHelper struct {
 	id                 component.ID
@@ -95,6 +99,8 @@ func (s *sqlServerScraperHelper) Scrape(ctx context.Context) (pmetric.Metrics, e
 		err = s.recordDatabasePerfCounterMetrics(ctx)
 	case getSQLServerPropertiesQuery(s.instanceName):
 		err = s.recordDatabaseStatusMetrics(ctx)
+	case getQueryRow():
+		err = s.recordCallingServices(ctx)
 	default:
 		return pmetric.Metrics{}, fmt.Errorf("Attempted to get metrics from unsupported query: %s", s.sqlQuery)
 	}
@@ -305,6 +311,61 @@ func (s *sqlServerScraperHelper) recordDatabaseStatusMetrics(ctx context.Context
 	}
 
 	return errors.Join(errs...)
+}
+
+func (s *sqlServerScraperHelper) recordCallingServices(ctx context.Context) error {
+	const (
+		lastExecutionTime = "last_execution_time"
+		queryHash         = "query_hash"
+		text              = "text"
+		executionCount    = "execution_count"
+	)
+	rows, err := s.client.QueryRows(ctx)
+
+	if err != nil {
+		if errors.Is(err, sqlquery.ErrNullValueWarning) {
+			//s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+		} else {
+			return fmt.Errorf("sqlServerScraperHelper failed getting rows for the raw query text: %w", err)
+		}
+	}
+	for _, row := range rows {
+		// TODO
+		rb := s.mb.NewResourceBuilder()
+		resource := rb.Emit()
+		attributes := resource.Attributes()
+		attributes.PutStr("query_hash", hex.EncodeToString([]byte(row[queryHash])))
+		attributes.PutStr("usage", "calling-service")
+		attributes.PutStr("last_execution_time", row[lastExecutionTime])
+		count, err := strconv.ParseInt(row[executionCount], 10, 64)
+		if err == nil {
+			attributes.PutInt("execution_count", count)
+		}
+		rawQuery := row[text]
+		matches := commenterRegex.FindStringSubmatch(rawQuery)
+		match := ""
+		if len(matches) == 1 {
+			match = matches[1]
+		} else if len(matches) > 1 {
+			match = matches[1]
+			s.logger.Sugar().Warnf("Found multiple comments in the query text, using the first one only. original query: %s", rawQuery)
+		} else if len(match) == 0 {
+			s.logger.Sugar().Warnf("No comments found in the query text, using the whole query. original query: %s", rawQuery)
+		}
+		if match != "" {
+			pairs := strings.Split(match, ",")
+			for _, pair := range pairs {
+				kv := strings.Split(pair, "=")
+				if len(kv) != 2 {
+					s.logger.Sugar().Warnf("Invalid key value pair in the comment: %s. original query: %s", pair, rawQuery)
+					continue
+				}
+				attributes.PutStr(kv[0], kv[1])
+			}
+		}
+		s.mb.EmitForResource(metadata.WithResource(resource))
+	}
+	return nil
 }
 
 func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
