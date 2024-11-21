@@ -118,6 +118,20 @@ This metric is only available when running on Windows.
 | ---- | ----------- | ---------- |
 | {pages}/s | Gauge | Double |
 
+### sqlserver.query.calling_service
+
+A query sample
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| count | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| str | str | Any Str |
+
 ### sqlserver.query.sample
 
 A query sample

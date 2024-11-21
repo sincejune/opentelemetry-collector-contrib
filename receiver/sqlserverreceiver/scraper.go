@@ -363,6 +363,11 @@ func (s *sqlServerScraperHelper) recordCallingServices(ctx context.Context) erro
 				attributes.PutStr(kv[0], kv[1])
 			}
 		}
+		s.mb.RecordSqlserverQueryCallingServiceDataPoint(
+			pcommon.NewTimestampFromTime(time.Now()),
+			1,
+			row[text],
+		)
 		s.mb.EmitForResource(metadata.WithResource(resource))
 	}
 	return nil

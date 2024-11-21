@@ -435,6 +435,15 @@ metrics:
     attributes: [
       "str",
     ]
+  sqlserver.query.calling_service:
+    enabled: true
+    description: A query sample
+    unit: "count"
+    gauge:
+      value_type: int
+    attributes: [
+      "str",
+    ]
 tests:
   config:
   goleak:

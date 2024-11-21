@@ -33,6 +33,8 @@ all_set:
       enabled: true
     sqlserver.processes.blocked:
       enabled: true
+    sqlserver.query.calling_service:
+      enabled: true
     sqlserver.query.sample:
       enabled: true
     sqlserver.query.sample2:
@@ -101,6 +103,8 @@ none_set:
     sqlserver.page.split.rate:
       enabled: false
     sqlserver.processes.blocked:
+      enabled: false
+    sqlserver.query.calling_service:
       enabled: false
     sqlserver.query.sample:
       enabled: false

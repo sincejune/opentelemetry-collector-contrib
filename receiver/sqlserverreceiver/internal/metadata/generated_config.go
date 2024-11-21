@@ -44,6 +44,7 @@ type MetricsConfig struct {
 	SqlserverPageOperationRate                  MetricConfig `mapstructure:"sqlserver.page.operation.rate"`
 	SqlserverPageSplitRate                      MetricConfig `mapstructure:"sqlserver.page.split.rate"`
 	SqlserverProcessesBlocked                   MetricConfig `mapstructure:"sqlserver.processes.blocked"`
+	SqlserverQueryCallingService                MetricConfig `mapstructure:"sqlserver.query.calling_service"`
 	SqlserverQuerySample                        MetricConfig `mapstructure:"sqlserver.query.sample"`
 	SqlserverQuerySample2                       MetricConfig `mapstructure:"sqlserver.query.sample2"`
 	SqlserverQuerySample3                       MetricConfig `mapstructure:"sqlserver.query.sample3"`
@@ -109,6 +110,9 @@ func DefaultMetricsConfig() MetricsConfig {
 		},
 		SqlserverProcessesBlocked: MetricConfig{
 			Enabled: false,
+		},
+		SqlserverQueryCallingService: MetricConfig{
+			Enabled: true,
 		},
 		SqlserverQuerySample: MetricConfig{
 			Enabled: true,

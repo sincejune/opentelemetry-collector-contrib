@@ -917,6 +917,57 @@ func newMetricSqlserverProcessesBlocked(cfg MetricConfig) metricSqlserverProcess
 	return m
 }
 
+type metricSqlserverQueryCallingService struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills sqlserver.query.calling_service metric with initial data.
+func (m *metricSqlserverQueryCallingService) init() {
+	m.data.SetName("sqlserver.query.calling_service")
+	m.data.SetDescription("A query sample")
+	m.data.SetUnit("count")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSqlserverQueryCallingService) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("str", strAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSqlserverQueryCallingService) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSqlserverQueryCallingService) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSqlserverQueryCallingService(cfg MetricConfig) metricSqlserverQueryCallingService {
+	m := metricSqlserverQueryCallingService{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
 type metricSqlserverQuerySample struct {
 	data     pmetric.Metric // data buffer for generated metric.
 	config   MetricConfig   // metric config provided by user.
@@ -1675,6 +1726,7 @@ type MetricsBuilder struct {
 	metricSqlserverPageOperationRate                  metricSqlserverPageOperationRate
 	metricSqlserverPageSplitRate                      metricSqlserverPageSplitRate
 	metricSqlserverProcessesBlocked                   metricSqlserverProcessesBlocked
+	metricSqlserverQueryCallingService                metricSqlserverQueryCallingService
 	metricSqlserverQuerySample                        metricSqlserverQuerySample
 	metricSqlserverQuerySample2                       metricSqlserverQuerySample2
 	metricSqlserverQuerySample3                       metricSqlserverQuerySample3
@@ -1731,6 +1783,7 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.Settings, opt
 		metricSqlserverPageOperationRate:                  newMetricSqlserverPageOperationRate(mbc.Metrics.SqlserverPageOperationRate),
 		metricSqlserverPageSplitRate:                      newMetricSqlserverPageSplitRate(mbc.Metrics.SqlserverPageSplitRate),
 		metricSqlserverProcessesBlocked:                   newMetricSqlserverProcessesBlocked(mbc.Metrics.SqlserverProcessesBlocked),
+		metricSqlserverQueryCallingService:                newMetricSqlserverQueryCallingService(mbc.Metrics.SqlserverQueryCallingService),
 		metricSqlserverQuerySample:                        newMetricSqlserverQuerySample(mbc.Metrics.SqlserverQuerySample),
 		metricSqlserverQuerySample2:                       newMetricSqlserverQuerySample2(mbc.Metrics.SqlserverQuerySample2),
 		metricSqlserverQuerySample3:                       newMetricSqlserverQuerySample3(mbc.Metrics.SqlserverQuerySample3),
@@ -1851,6 +1904,7 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	mb.metricSqlserverPageOperationRate.emit(ils.Metrics())
 	mb.metricSqlserverPageSplitRate.emit(ils.Metrics())
 	mb.metricSqlserverProcessesBlocked.emit(ils.Metrics())
+	mb.metricSqlserverQueryCallingService.emit(ils.Metrics())
 	mb.metricSqlserverQuerySample.emit(ils.Metrics())
 	mb.metricSqlserverQuerySample2.emit(ils.Metrics())
 	mb.metricSqlserverQuerySample3.emit(ils.Metrics())
@@ -1994,6 +2048,11 @@ func (mb *MetricsBuilder) RecordSqlserverProcessesBlockedDataPoint(ts pcommon.Ti
 	}
 	mb.metricSqlserverProcessesBlocked.recordDataPoint(mb.startTime, ts, val)
 	return nil
+}
+
+// RecordSqlserverQueryCallingServiceDataPoint adds a data point to sqlserver.query.calling_service metric.
+func (mb *MetricsBuilder) RecordSqlserverQueryCallingServiceDataPoint(ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	mb.metricSqlserverQueryCallingService.recordDataPoint(mb.startTime, ts, val, strAttributeValue)
 }
 
 // RecordSqlserverQuerySampleDataPoint adds a data point to sqlserver.query.sample metric.
