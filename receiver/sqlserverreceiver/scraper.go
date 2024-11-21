@@ -337,6 +337,7 @@ func (s *sqlServerScraperHelper) recordCallingServices(ctx context.Context) erro
 		attributes.PutStr("query_hash", hex.EncodeToString([]byte(row[queryHash])))
 		attributes.PutStr("usage", "calling-service")
 		attributes.PutStr("last_execution_time", row[lastExecutionTime])
+		attributes.PutStr("instance", s.instanceName)
 		count, err := strconv.ParseInt(row[executionCount], 10, 64)
 		if err == nil {
 			attributes.PutInt("execution_count", count)
