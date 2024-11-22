@@ -129,6 +129,10 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
+			mb.RecordSqlserverQueryCallingServiceDataPoint(ts, 1, "str-val")
+
+			defaultMetricsCount++
+			allMetricsCount++
 			mb.RecordSqlserverQuerySampleDataPoint(ts, 1, "now-val", "query_start-val", "user_name-val", "last_request_start_time-val", "database_name-val", "id-val", "last_request_end_time-val", "session_status-val", "request_status-val", "statement_text-val", "text-val", "client_port-val", "client_address-val", "host_name-val", "program_name-val", "is_user_process-val", "command-val", "blocking_session_id-val", "wait_type-val", "wait_time-val", "last_wait_time-val", "wait_resource-val", "open_transaction_count-val", "transaction_id-val", "percent_complete-val", "estimated_completion_time-val", "cpu_time-val", "total_elapsed_time-val", "reads-val", "writes-val", "logical_reads-val", "transaction_isolation_level-val", "lock_timeout-val", "deadlock_priority-val", "query_hash-val", "query_plan_hash-val", "context_info-val")
 
 			defaultMetricsCount++
@@ -447,6 +451,21 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.calling_service":
+					assert.False(t, validatedMetrics["sqlserver.query.calling_service"], "Found a duplicate in the metrics slice: sqlserver.query.calling_service")
+					validatedMetrics["sqlserver.query.calling_service"] = true
+					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
+					assert.Equal(t, "A query sample", ms.At(i).Description())
+					assert.Equal(t, "count", ms.At(i).Unit())
+					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+					attrVal, ok := dp.Attributes().Get("str")
+					assert.True(t, ok)
+					assert.EqualValues(t, "str-val", attrVal.Str())
 				case "sqlserver.query.sample":
 					assert.False(t, validatedMetrics["sqlserver.query.sample"], "Found a duplicate in the metrics slice: sqlserver.query.sample")
 					validatedMetrics["sqlserver.query.sample"] = true

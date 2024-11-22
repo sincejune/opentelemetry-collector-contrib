@@ -455,3 +455,19 @@ func getSQLQuery(instanceName string) string {
 func getQQueryPlan() string {
 	return qQueryPlan
 }
+
+func getQueryRow() string {
+	return `
+	SELECT 
+		CONVERT(NVARCHAR, TODATETIMEOFFSET(qs.last_execution_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET())), 126) as last_execution_time,
+		qs.query_hash,
+		qt.text,
+		qs.execution_count
+	FROM 
+		sys.dm_exec_query_stats AS qs
+	CROSS APPLY 
+		sys.dm_exec_sql_text(qs.sql_handle) AS qt
+	WHERE 
+		qt.text LIKE '/*%'
+	`
+}
