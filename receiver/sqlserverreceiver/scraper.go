@@ -477,7 +477,7 @@ func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
 		s.mb.RecordSqlserverQuerySample2DataPoint(
 			pcommon.NewTimestampFromTime(time.Now()),
 			1,
-			row[statementText],
+			"placeholder",
 		)
 		//s.logger.Info("Recorded metrics...")
 		var resource = rb.Emit()
@@ -486,6 +486,8 @@ func (s *sqlServerScraperHelper) recordSQL(ctx context.Context) error {
 		attributes.PutStr("query_hash", hex.EncodeToString([]byte(row[queryHash])))
 		attributes.PutStr("query_plan_hash", hex.EncodeToString([]byte(row[queryPlanHash])))
 		attributes.PutStr("isplanquery", "no")
+
+		attributes.PutStr("command", row[command])
 
 		// Add metrics
 		attributes.PutStr("wait_type", row[waitType])
