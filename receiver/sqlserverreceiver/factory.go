@@ -44,6 +44,7 @@ func setupQueries(cfg *Config) []string {
 	queries = append(queries, getSQLQuery(cfg.InstanceName))
 	queries = append(queries, getQQueryPlan())
 	queries = append(queries, getQueryRow())
+	queries = append(queries, getContextInfo())
 
 	//if isDatabaseIOQueryEnabled(&cfg.MetricsBuilderConfig.Metrics) {
 	//queries = append(queries, getSQLServerDatabaseIOQuery(cfg.InstanceName))

@@ -101,6 +101,8 @@ func (s *sqlServerScraperHelper) Scrape(ctx context.Context) (pmetric.Metrics, e
 		err = s.recordDatabaseStatusMetrics(ctx)
 	case getQueryRow():
 		err = s.recordCallingServices(ctx)
+	case getContextInfo():
+		err = s.recordContextInfo(ctx)
 	default:
 		return pmetric.Metrics{}, fmt.Errorf("Attempted to get metrics from unsupported query: %s", s.sqlQuery)
 	}
@@ -311,6 +313,42 @@ func (s *sqlServerScraperHelper) recordDatabaseStatusMetrics(ctx context.Context
 	}
 
 	return errors.Join(errs...)
+}
+
+func (s *sqlServerScraperHelper) recordContextInfo(ctx context.Context) error {
+	const (
+		queryHash   = "query_hash"
+		sessionId   = "session_id"
+		contextInfo = "context_info"
+	)
+	rows, err := s.client.QueryRows(ctx)
+
+	if err != nil {
+		if errors.Is(err, sqlquery.ErrNullValueWarning) {
+			//s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+		} else {
+			return fmt.Errorf("sqlServerScraperHelper failed getting rows for the raw query text: %w", err)
+		}
+	}
+	for _, row := range rows {
+		// TODO
+		rb := s.mb.NewResourceBuilder()
+		resource := rb.Emit()
+		attributes := resource.Attributes()
+		attributes.PutStr(queryHash, hex.EncodeToString([]byte(row[queryHash])))
+		attributes.PutStr("usage", "traces")
+		attributes.PutStr(sessionId, row[sessionId])
+		attributes.PutStr("instance", s.instanceName)
+		attributes.PutStr(contextInfo, hex.EncodeToString([]byte(row[contextInfo])))
+
+		s.mb.RecordSqlserverQueryTracesDataPoint(
+			pcommon.NewTimestampFromTime(time.Now()),
+			1,
+			row[queryHash],
+		)
+		s.mb.EmitForResource(metadata.WithResource(resource))
+	}
+	return nil
 }
 
 func (s *sqlServerScraperHelper) recordCallingServices(ctx context.Context) error {

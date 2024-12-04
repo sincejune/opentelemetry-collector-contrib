@@ -1157,6 +1157,57 @@ func newMetricSqlserverQuerySample3(cfg MetricConfig) metricSqlserverQuerySample
 	return m
 }
 
+type metricSqlserverQueryTraces struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills sqlserver.query.traces metric with initial data.
+func (m *metricSqlserverQueryTraces) init() {
+	m.data.SetName("sqlserver.query.traces")
+	m.data.SetDescription("A query sample")
+	m.data.SetUnit("count")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSqlserverQueryTraces) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("str", strAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSqlserverQueryTraces) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSqlserverQueryTraces) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSqlserverQueryTraces(cfg MetricConfig) metricSqlserverQueryTraces {
+	m := metricSqlserverQueryTraces{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
 type metricSqlserverResourcePoolDiskThrottledReadRate struct {
 	data     pmetric.Metric // data buffer for generated metric.
 	config   MetricConfig   // metric config provided by user.
@@ -1730,6 +1781,7 @@ type MetricsBuilder struct {
 	metricSqlserverQuerySample                        metricSqlserverQuerySample
 	metricSqlserverQuerySample2                       metricSqlserverQuerySample2
 	metricSqlserverQuerySample3                       metricSqlserverQuerySample3
+	metricSqlserverQueryTraces                        metricSqlserverQueryTraces
 	metricSqlserverResourcePoolDiskThrottledReadRate  metricSqlserverResourcePoolDiskThrottledReadRate
 	metricSqlserverResourcePoolDiskThrottledWriteRate metricSqlserverResourcePoolDiskThrottledWriteRate
 	metricSqlserverTransactionRate                    metricSqlserverTransactionRate
@@ -1787,6 +1839,7 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.Settings, opt
 		metricSqlserverQuerySample:                        newMetricSqlserverQuerySample(mbc.Metrics.SqlserverQuerySample),
 		metricSqlserverQuerySample2:                       newMetricSqlserverQuerySample2(mbc.Metrics.SqlserverQuerySample2),
 		metricSqlserverQuerySample3:                       newMetricSqlserverQuerySample3(mbc.Metrics.SqlserverQuerySample3),
+		metricSqlserverQueryTraces:                        newMetricSqlserverQueryTraces(mbc.Metrics.SqlserverQueryTraces),
 		metricSqlserverResourcePoolDiskThrottledReadRate:  newMetricSqlserverResourcePoolDiskThrottledReadRate(mbc.Metrics.SqlserverResourcePoolDiskThrottledReadRate),
 		metricSqlserverResourcePoolDiskThrottledWriteRate: newMetricSqlserverResourcePoolDiskThrottledWriteRate(mbc.Metrics.SqlserverResourcePoolDiskThrottledWriteRate),
 		metricSqlserverTransactionRate:                    newMetricSqlserverTransactionRate(mbc.Metrics.SqlserverTransactionRate),
@@ -1908,6 +1961,7 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	mb.metricSqlserverQuerySample.emit(ils.Metrics())
 	mb.metricSqlserverQuerySample2.emit(ils.Metrics())
 	mb.metricSqlserverQuerySample3.emit(ils.Metrics())
+	mb.metricSqlserverQueryTraces.emit(ils.Metrics())
 	mb.metricSqlserverResourcePoolDiskThrottledReadRate.emit(ils.Metrics())
 	mb.metricSqlserverResourcePoolDiskThrottledWriteRate.emit(ils.Metrics())
 	mb.metricSqlserverTransactionRate.emit(ils.Metrics())
@@ -2068,6 +2122,11 @@ func (mb *MetricsBuilder) RecordSqlserverQuerySample2DataPoint(ts pcommon.Timest
 // RecordSqlserverQuerySample3DataPoint adds a data point to sqlserver.query.sample3 metric.
 func (mb *MetricsBuilder) RecordSqlserverQuerySample3DataPoint(ts pcommon.Timestamp, val int64, strAttributeValue string) {
 	mb.metricSqlserverQuerySample3.recordDataPoint(mb.startTime, ts, val, strAttributeValue)
+}
+
+// RecordSqlserverQueryTracesDataPoint adds a data point to sqlserver.query.traces metric.
+func (mb *MetricsBuilder) RecordSqlserverQueryTracesDataPoint(ts pcommon.Timestamp, val int64, strAttributeValue string) {
+	mb.metricSqlserverQueryTraces.recordDataPoint(mb.startTime, ts, val, strAttributeValue)
 }
 
 // RecordSqlserverResourcePoolDiskThrottledReadRateDataPoint adds a data point to sqlserver.resource_pool.disk.throttled.read.rate metric.

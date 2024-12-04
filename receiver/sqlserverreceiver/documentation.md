@@ -212,6 +212,20 @@ A query sample
 | ---- | ----------- | ------ |
 | str | str | Any Str |
 
+### sqlserver.query.traces
+
+A query sample
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| count | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| str | str | Any Str |
+
 ### sqlserver.transaction.rate
 
 Number of transactions started for the database (not including XTP-only transactions).
