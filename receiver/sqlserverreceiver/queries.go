@@ -393,6 +393,20 @@ WHERE
     sess.status != 'sleeping';
 `
 
+const contextInfoQuery = `
+SELECT 
+    er.session_id,
+    es.context_info,
+	er.query_hash
+FROM 
+    sys.dm_exec_requests er
+CROSS APPLY 
+    sys.dm_exec_sql_text(er.sql_handle) AS est
+JOIN 
+    sys.dm_exec_sessions es ON er.session_id = es.session_id
+WHERE es.context_info != ''
+`
+
 const qQueryPlan = `
 with qstats as (
     select
@@ -470,4 +484,8 @@ func getQueryRow() string {
 	WHERE 
 		qt.text LIKE '/*%'
 	`
+}
+
+func getContextInfo() string {
+	return contextInfoQuery
 }
