@@ -444,6 +444,13 @@ metrics:
     attributes: [
       "str",
     ]
+  sqlserver.query.traces:
+    enabled: true
+    description: A query sample
+    unit: "count"
+    gauge:
+      value_type: int
+    attributes: ["str"]
 tests:
   config:
   goleak:

@@ -143,6 +143,10 @@ func TestMetricsBuilder(t *testing.T) {
 			allMetricsCount++
 			mb.RecordSqlserverQuerySample3DataPoint(ts, 1, "str-val")
 
+			defaultMetricsCount++
+			allMetricsCount++
+			mb.RecordSqlserverQueryTracesDataPoint(ts, 1, "str-val")
+
 			allMetricsCount++
 			mb.RecordSqlserverResourcePoolDiskThrottledReadRateDataPoint(ts, "1")
 
@@ -607,6 +611,21 @@ func TestMetricsBuilder(t *testing.T) {
 				case "sqlserver.query.sample3":
 					assert.False(t, validatedMetrics["sqlserver.query.sample3"], "Found a duplicate in the metrics slice: sqlserver.query.sample3")
 					validatedMetrics["sqlserver.query.sample3"] = true
+					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
+					assert.Equal(t, "A query sample", ms.At(i).Description())
+					assert.Equal(t, "count", ms.At(i).Unit())
+					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+					attrVal, ok := dp.Attributes().Get("str")
+					assert.True(t, ok)
+					assert.EqualValues(t, "str-val", attrVal.Str())
+				case "sqlserver.query.traces":
+					assert.False(t, validatedMetrics["sqlserver.query.traces"], "Found a duplicate in the metrics slice: sqlserver.query.traces")
+					validatedMetrics["sqlserver.query.traces"] = true
 					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
 					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
 					assert.Equal(t, "A query sample", ms.At(i).Description())

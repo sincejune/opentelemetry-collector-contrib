@@ -48,6 +48,7 @@ type MetricsConfig struct {
 	SqlserverQuerySample                        MetricConfig `mapstructure:"sqlserver.query.sample"`
 	SqlserverQuerySample2                       MetricConfig `mapstructure:"sqlserver.query.sample2"`
 	SqlserverQuerySample3                       MetricConfig `mapstructure:"sqlserver.query.sample3"`
+	SqlserverQueryTraces                        MetricConfig `mapstructure:"sqlserver.query.traces"`
 	SqlserverResourcePoolDiskThrottledReadRate  MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.read.rate"`
 	SqlserverResourcePoolDiskThrottledWriteRate MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.write.rate"`
 	SqlserverTransactionRate                    MetricConfig `mapstructure:"sqlserver.transaction.rate"`
@@ -121,6 +122,9 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: true,
 		},
 		SqlserverQuerySample3: MetricConfig{
+			Enabled: true,
+		},
+		SqlserverQueryTraces: MetricConfig{
 			Enabled: true,
 		},
 		SqlserverResourcePoolDiskThrottledReadRate: MetricConfig{
