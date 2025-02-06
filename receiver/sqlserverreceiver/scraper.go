@@ -11,20 +11,20 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/collector/pdata/plog"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/scraper"
 	"go.opentelemetry.io/collector/scraper/scraperhelper"
 	"go.uber.org/zap"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sqlquery"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver/internal/metadata"
 )
@@ -52,8 +52,10 @@ type sqlServerScraperHelper struct {
 	cache               *lru.Cache[string, float64]
 }
 
-var _ scraper.Metrics = (*sqlServerScraperHelper)(nil)
-var _ scraper.Logs = (*sqlServerScraperHelper)(nil)
+var (
+	_ scraper.Metrics = (*sqlServerScraperHelper)(nil)
+	_ scraper.Logs    = (*sqlServerScraperHelper)(nil)
+)
 
 func newSQLServerScraper(id component.ID,
 	query string,
@@ -492,7 +494,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
 			// TODO: uncomment
-			//s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+			// s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
 		} else {
 			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
 		}
@@ -536,7 +538,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
 		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
 
-		//rb := s.mb.NewResourceBuilder()
+		// rb := s.mb.NewResourceBuilder()
 		record := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 		record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 
@@ -675,7 +677,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
 			// TODO: ignore this for now.
-			//s.logger.Warn("problems encountered getting log rows", zap.Error(err))
+			// s.logger.Warn("problems encountered getting log rows", zap.Error(err))
 		} else {
 			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting log rows: %w", err)
 		}
@@ -861,7 +863,7 @@ func ObfuscateXMLPlan(rawPlan string) (string, error) {
 						if err != nil {
 							// TODO: fix this, sometimes statement cannot be obfuscated.
 							fmt.Println("Unable to obfuscated sql statement: " + elem.Attr[i].Value)
-							//return "", err
+							// return "", err
 						}
 						elem.Attr[i].Value = val
 					}
