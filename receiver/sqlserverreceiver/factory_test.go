@@ -40,6 +40,10 @@ func TestCreateMetrics(t *testing.T) {
 						CollectionInterval: 10 * time.Second,
 						InitialDelay:       time.Second,
 					},
+					LogsConfig: LogsConfig{
+						EnableQueryTextAndPlan: true,
+						EnableQuerySample:      true,
+					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 					Granularity:          10,
 					MaxQuerySampleCount:  10000,

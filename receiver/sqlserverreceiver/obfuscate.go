@@ -1,3 +1,6 @@
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
@@ -102,7 +105,7 @@ type sqlConfig struct {
 // fails. An optional configuration may be passed to change the behavior of the obfuscator.
 //
 //export ObfuscateSQL
-func ObfuscateSQL(rawQuery string, optStr string) (string, error) {
+func obfuscateSQL(rawQuery string, optStr string) (string, error) {
 	if optStr == "" {
 		// ensure we have a valid JSON string before unmarshalling
 		optStr = "{}"
@@ -149,7 +152,7 @@ func ObfuscateSQL(rawQuery string, optStr string) (string, error) {
 // ObfuscateSQLExecPlan obfuscates the provided json query execution plan, returning an error if the operation fails
 //
 //export ObfuscateSQLExecPlan
-func ObfuscateSQLExecPlan(jsonPlan string, normalize bool) (string, error) {
+func obfuscateSQLExecPlan(jsonPlan string, normalize bool) (string, error) {
 	obfuscatedJSONPlan, err := lazyInitObfuscator().ObfuscateSQLExecPlan(
 		jsonPlan,
 		normalize,

@@ -615,7 +615,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			}
 		}
 
-		obfuscatedSQL, err := ObfuscateSQL(row["text"], "")
+		obfuscatedSQL, err := obfuscateSQL(row["text"], "")
 		if err != nil {
 			s.logger.Error("failed to obfuscate query text", zap.Error(err))
 			errs = append(errs, err)
@@ -626,7 +626,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 		record.Attributes().PutStr("query_plan", row["query_plan"])
 
 		// obfuscate query plan
-		obfuscatedQueryPlan, err := ObfuscateXMLPlan(row["query_plan"])
+		obfuscatedQueryPlan, err := obfuscateXMLPlan(row["query_plan"])
 		if err != nil {
 			s.logger.Error("failed to obfuscate query plan", zap.Error(err))
 			errs = append(errs, err)
@@ -774,7 +774,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing row count. original value: %s, err: %s", row[rowCount], err))
 		}
 
-		obfuscatedStatement, err := ObfuscateSQL(row[statementText], "")
+		obfuscatedStatement, err := obfuscateSQL(row[statementText], "")
 		if err != nil {
 			s.logger.Error(fmt.Sprintf("failed to obfuscate SQL statement value: %s err: %s", row[statementText], err))
 		}
@@ -838,8 +838,8 @@ var XMLPlanObfuscationAttrs = []string{
 	"ParameterCompiledValue",
 }
 
-// ObfuscateXMLPlan obfuscates SQL text & parameters from the provided SQL Server XML Plan
-func ObfuscateXMLPlan(rawPlan string) (string, error) {
+// obfuscateXMLPlan obfuscates SQL text & parameters from the provided SQL Server XML Plan
+func obfuscateXMLPlan(rawPlan string) (string, error) {
 	decoder := xml.NewDecoder(strings.NewReader(rawPlan))
 	var buffer bytes.Buffer
 	encoder := xml.NewEncoder(&buffer)
@@ -859,7 +859,7 @@ func ObfuscateXMLPlan(rawPlan string) (string, error) {
 			for i := range elem.Attr {
 				for _, attrName := range XMLPlanObfuscationAttrs {
 					if elem.Attr[i].Name.Local == attrName {
-						val, err := ObfuscateSQL(elem.Attr[i].Value, "")
+						val, err := obfuscateSQL(elem.Attr[i].Value, "")
 						if err != nil {
 							// TODO: fix this, sometimes statement cannot be obfuscated.
 							fmt.Println("Unable to obfuscated sql statement: " + elem.Attr[i].Value)

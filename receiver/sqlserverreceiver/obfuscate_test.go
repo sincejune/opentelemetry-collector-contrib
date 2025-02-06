@@ -1,3 +1,6 @@
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
 package sqlserverreceiver
 
 import (
@@ -63,7 +66,7 @@ func TestObfuscateSQL(t *testing.T) {
 	WHERE 
 		sess.status != 'sleeping';
 `
-	result, err := ObfuscateSQL(origin, "")
+	result, err := obfuscateSQL(origin, "")
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
