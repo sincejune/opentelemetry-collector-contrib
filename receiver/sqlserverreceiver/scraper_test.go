@@ -7,14 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -194,12 +193,14 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 }
 
 func TestSortRows(t *testing.T) {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-
+	// TODO: add seed
+	// rand.New(new)
+	// rand.Seed(time.Now().UnixNano())
+	// rand.New()
 	weights := make([]int64, 50)
 
 	for i := range weights {
-		weights[i] = rand.Int63()
+		weights[i] = rand.Int64()
 	}
 
 	var rows []sqlquery.StringMap
@@ -215,7 +216,7 @@ func TestSortRows(t *testing.T) {
 	for i, v := range weights {
 		expected := v
 		actual, err := strconv.ParseInt(rows[i]["column"], 10, 64)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expected, actual)
 	}
 }
