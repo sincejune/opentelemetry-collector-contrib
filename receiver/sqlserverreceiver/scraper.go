@@ -471,9 +471,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 		}
 
 		s.mb.EmitForResource(metadata.WithResource(rb.Emit()))
-
 	}
-
 	return errors.Join(errs...)
 }
 
@@ -494,7 +492,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
 			// TODO: uncomment
-			// s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+			s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
 		} else {
 			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
 		}
@@ -615,7 +613,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			}
 		}
 
-		obfuscatedSQL, err := obfuscateSQL(row["text"], "")
+		obfuscatedSQL, err := obfuscateSQL(row["text"], "{}")
 		if err != nil {
 			s.logger.Error("failed to obfuscate query text", zap.Error(err))
 			errs = append(errs, err)
@@ -644,17 +642,17 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 	const DBName = "db_name"
 	const clientPort = "client_port"
 	const queryStart = "query_start"
-	const sessionId = "session_id"
+	const sessionID = "session_id"
 	const sessionStatus = "session_status"
 	const hostname = "host_name"
 	const command = "command"
 	const statementText = "statement_text"
-	const blockingSessionId = "blocking_session_id"
+	const blockingSessionID = "blocking_session_id"
 	const waitType = "wait_type"
 	const waitTime = "wait_time"
 	const waitResource = "wait_resource"
 	const openTransactionCount = "open_transaction_count"
-	const transactionId = "transaction_id"
+	const transactionID = "transaction_id"
 	const percentComplete = "percent_complete"
 	const estimatedCompletionTime = "estimated_completion_time"
 	const cpuTime = "cpu_time"
@@ -677,7 +675,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
 			// TODO: ignore this for now.
-			// s.logger.Warn("problems encountered getting log rows", zap.Error(err))
+			s.logger.Warn("problems encountered getting log rows", zap.Error(err))
 		} else {
 			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting log rows: %w", err)
 		}
@@ -700,13 +698,13 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			}
 		}
 
-		sessionIdNumber, err := strconv.Atoi(row[sessionId])
+		sessionIDNumber, err := strconv.Atoi(row[sessionID])
 		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing session id number. original value: %s, err: %s", row[sessionId], err))
+			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing session id number. original value: %s, err: %s", row[sessionID], err))
 		}
-		blockingSessionIdNumber, err := strconv.Atoi(row[blockingSessionId])
+		blockingSessionIDNumber, err := strconv.Atoi(row[blockingSessionID])
 		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing blocking session id number. value: %s, err: %s", row[blockingSessionId], err))
+			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing blocking session id number. value: %s, err: %s", row[blockingSessionID], err))
 		}
 		waitTimeVal, err := strconv.Atoi(row[waitTime])
 		if err != nil {
@@ -716,9 +714,9 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 		if err != nil {
 			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing open transaction count. original value: %s, err: %s", row[openTransactionCount], err))
 		}
-		transactionIdVal, err := strconv.Atoi(row[transactionId])
+		transactionIDVal, err := strconv.Atoi(row[transactionID])
 		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing transaction id number. original value: %s, err: %s", row[transactionId], err))
+			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing transaction id number. original value: %s, err: %s", row[transactionID], err))
 		}
 		// percent complete and estimated completion time is a real value in mssql
 		percentCompleteVal, err := strconv.ParseFloat(row[percentComplete], 32)
@@ -788,17 +786,17 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			record.Attributes().PutStr(DBName, row[DBName])
 			record.Attributes().PutInt(clientPort, int64(clientPortNumber))
 			record.Attributes().PutStr(queryStart, row[queryStart])
-			record.Attributes().PutInt(sessionId, int64(sessionIdNumber))
+			record.Attributes().PutInt(sessionID, int64(sessionIDNumber))
 			record.Attributes().PutStr(sessionStatus, row[sessionStatus])
 			record.Attributes().PutStr(hostname, row[hostname])
 			record.Attributes().PutStr(command, row[command])
 			record.Attributes().PutStr(statementText, obfuscatedStatement)
-			record.Attributes().PutInt(blockingSessionId, int64(blockingSessionIdNumber))
+			record.Attributes().PutInt(blockingSessionID, int64(blockingSessionIDNumber))
 			record.Attributes().PutStr(waitType, row[waitType])
 			record.Attributes().PutInt(waitTime, int64(waitTimeVal))
 			record.Attributes().PutStr(waitResource, row[waitResource])
 			record.Attributes().PutInt(openTransactionCount, int64(openTransactionCountVal))
-			record.Attributes().PutInt(transactionId, int64(transactionIdVal))
+			record.Attributes().PutInt(transactionID, int64(transactionIDVal))
 			record.Attributes().PutDouble(percentComplete, percentCompleteVal)
 			record.Attributes().PutDouble(estimatedCompletionTime, estimatedCompletionTimeVal)
 			record.Attributes().PutInt(cpuTime, int64(cpuTimeVal))

@@ -8,7 +8,7 @@
 
 // source: https://github.com/DataDog/datadog-agent/blob/main/pkg/collector/python/datadog_agent.go
 
-package sqlserverreceiver
+package sqlserverreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver"
 
 import (
 	"encoding/json"
@@ -152,17 +152,6 @@ func obfuscateSQL(rawQuery string, optStr string) (string, error) {
 // ObfuscateSQLExecPlan obfuscates the provided json query execution plan, returning an error if the operation fails
 //
 //export ObfuscateSQLExecPlan
-func obfuscateSQLExecPlan(jsonPlan string, normalize bool) (string, error) {
-	obfuscatedJSONPlan, err := lazyInitObfuscator().ObfuscateSQLExecPlan(
-		jsonPlan,
-		normalize,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	return obfuscatedJSONPlan, nil
-}
 
 // defaultSQLPlanNormalizeSettings are the default JSON obfuscator settings for both obfuscating and normalizing SQL
 // execution plans
