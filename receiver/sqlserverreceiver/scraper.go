@@ -638,8 +638,8 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 }
 
 func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) (plog.Logs, error) {
-	const username = "user_name"
 	const DBName = "db_name"
+	const clientAddress = "client_address"
 	const clientPort = "client_port"
 	const queryStart = "query_start"
 	const sessionID = "session_id"
@@ -668,9 +668,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 	const queryPlanHash = "query_plan_hash"
 	const contextInfo = "context_info"
 
-	const loginName = "login_name"
-	const originalLoginName = "original_login_name"
-	const objectName = "object_name"
+	const username = "username"
 	rows, err := s.client.QueryRows(ctx)
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
@@ -782,8 +780,8 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			// TODO: report this value
 			record := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 			record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
-			record.Attributes().PutStr(username, row[username])
 			record.Attributes().PutStr(DBName, row[DBName])
+			record.Attributes().PutStr(clientAddress, row[clientAddress])
 			record.Attributes().PutInt(clientPort, int64(clientPortNumber))
 			record.Attributes().PutStr(queryStart, row[queryStart])
 			record.Attributes().PutInt(sessionID, int64(sessionIDNumber))
@@ -812,14 +810,11 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			record.Attributes().PutStr(queryPlanHash, queryPlanHashVal)
 			record.Attributes().PutStr(contextInfo, contextInfoVal)
 
-			record.Attributes().PutStr(loginName, row[loginName])
-			record.Attributes().PutStr(originalLoginName, row[originalLoginName])
-			record.Attributes().PutStr(objectName, row[objectName])
+			record.Attributes().PutStr(username, row[username])
 
 			waitCode, waitCategory := getWaitCategory(row[waitType])
 			record.Attributes().PutInt("wait_code", int64(waitCode))
 			record.Attributes().PutStr("wait_category", waitCategory)
-			record.Attributes().PutStr(objectName, row[objectName])
 			record.Body().SetStr("sample")
 		} else {
 			s.cache.Add(cacheKey, 1)
