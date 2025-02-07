@@ -64,6 +64,25 @@ func TestValidate(t *testing.T) {
 			},
 			expectedSuccess: true,
 		},
+		{
+			desc: "invalid MaxQuerySampleCount config",
+			cfg: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+				ControllerConfig:     scraperhelper.NewDefaultControllerConfig(),
+				MaxQuerySampleCount:  100000,
+			},
+			expectedSuccess: false,
+		},
+		{
+			desc: "invalid TopQueryCount config",
+			cfg: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+				ControllerConfig:     scraperhelper.NewDefaultControllerConfig(),
+				MaxQuerySampleCount:  100,
+				TopQueryCount:        200000,
+			},
+			expectedSuccess: false,
+		},
 	}
 
 	for _, tc := range testCases {
