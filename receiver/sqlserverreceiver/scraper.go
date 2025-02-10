@@ -503,13 +503,13 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 
 	for i, row := range rows {
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
-		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHandle]))
+		queryPlanHandleVal := hex.EncodeToString([]byte(row[queryPlanHandle]))
 
 		elapsedTime, err := strconv.ParseFloat(row[totalElapsedTime], 64)
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting logs rows: %s", err))
 		} else {
-			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalElapsedTime, elapsedTime); cached && diff > 0 {
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHandleVal, totalElapsedTime, elapsedTime); cached && diff > 0 {
 				totalElapsedTimeDiffs[i] = int64(diff)
 			}
 		}
