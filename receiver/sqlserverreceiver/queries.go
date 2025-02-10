@@ -335,3 +335,163 @@ func getSQLServerPropertiesQuery(instanceName string) string {
 
 	return fmt.Sprintf(sqlServerProperties, "")
 }
+
+const sqlServerQueryMetrics = `
+%s
+%s
+SELECT TOP(@topNValue)
+REPLACE(@@SERVERNAME,'\',':') AS [sql_instance],
+HOST_NAME() AS [computer_name],
+qs.query_hash AS query_hash,
+qs.query_plan_hash AS query_plan_hash,
+SUM(qs.execution_count) AS execution_count,
+SUM(qs.total_elapsed_time) AS total_elapsed_time,
+SUM(qs.total_worker_time) AS total_worker_time,
+SUM(qs.total_logical_reads) AS total_logical_reads,
+SUM(qs.total_physical_reads) AS total_physical_reads,
+SUM(qs.total_logical_writes) AS total_logical_writes,
+SUM(qs.total_rows) AS total_rows,
+SUM(qs.total_grant_kb) as total_grant_kb
+FROM sys.dm_exec_query_stats AS qs
+WHERE qs.last_execution_time BETWEEN DATEADD(SECOND, @granularity, GETDATE()) AND GETDATE() %s
+GROUP BY
+qs.query_hash,
+qs.query_plan_hash;
+`
+
+const (
+	granularityDeclaration = `DECLARE @granularity INT = -%d;`
+	topNValueDeclaration   = `DECLARE @topNValue INT = %d;`
+)
+
+func getSQLServerQueryMetricsQuery(instanceName string, maxQuerySampleCount uint, granularity uint) string {
+	var topQueryCountStatement string
+	var granularityStatement string
+	var instanceNameClause string
+
+	topQueryCountStatement = fmt.Sprintf(topNValueDeclaration, maxQuerySampleCount)
+
+	granularityStatement = fmt.Sprintf(granularityDeclaration, granularity)
+
+	if instanceName != "" {
+		instanceNameClause = fmt.Sprintf("AND @@SERVERNAME = '%s'", instanceName)
+	} else {
+		instanceNameClause = ""
+	}
+
+	return fmt.Sprintf(sqlServerQueryMetrics, granularityStatement, topQueryCountStatement, instanceNameClause)
+}
+
+const sqlServerQueryTextAndPlan = `
+%s
+%s
+with qstats as (
+SELECT TOP(@topNValue)
+REPLACE(@@SERVERNAME,'\',':') AS [sql_instance],
+HOST_NAME() AS [computer_name],
+MAX(qs.plan_handle) AS query_plan_handle,
+qs.query_hash AS query_hash,
+qs.query_plan_hash AS query_plan_hash,
+SUM(qs.execution_count) AS execution_count,
+SUM(qs.total_elapsed_time) AS total_elapsed_time,
+SUM(qs.total_worker_time) AS total_worker_time,
+SUM(qs.total_logical_reads) AS total_logical_reads,
+SUM(qs.total_physical_reads) AS total_physical_reads,
+SUM(qs.total_logical_writes) AS total_logical_writes,
+SUM(qs.total_rows) AS total_rows,
+SUM(qs.total_grant_kb) as total_grant_kb
+FROM sys.dm_exec_query_stats AS qs
+WHERE qs.last_execution_time BETWEEN DATEADD(SECOND, @granularity, GETDATE()) AND GETDATE() %s
+GROUP BY
+qs.query_hash,
+qs.query_plan_hash
+)
+SELECT qs.*,
+SUBSTRING(st.text, (stats.statement_start_offset / 2) + 1,
+		 ((CASE statement_end_offset
+			   WHEN -1 THEN DATALENGTH(st.text)
+			   ELSE stats.statement_end_offset END - stats.statement_start_offset) / 2) + 1) AS text,
+ISNULL(qp.query_plan, '') AS query_plan
+FROM qstats AS qs
+INNER JOIN sys.dm_exec_query_stats AS stats on qs.query_plan_handle = stats.plan_handle
+CROSS APPLY sys.dm_exec_query_plan(qs.query_plan_handle) AS qp
+CROSS APPLY sys.dm_exec_sql_text(qs.query_plan_handle) AS st;
+`
+
+func getSQLServerQueryTextAndPlanQuery(instanceName string, maxQuerySampleCount uint, granularity uint) string {
+	var topQueryCountStatement string
+	var granularityStatement string
+	var instanceNameClause string
+
+	topQueryCountStatement = fmt.Sprintf(topNValueDeclaration, maxQuerySampleCount)
+
+	granularityStatement = fmt.Sprintf(granularityDeclaration, granularity)
+
+	if instanceName != "" {
+		instanceNameClause = fmt.Sprintf("AND @@SERVERNAME = '%s'", instanceName)
+	} else {
+		instanceNameClause = ""
+	}
+
+	return fmt.Sprintf(sqlServerQueryTextAndPlan, granularityStatement, topQueryCountStatement, instanceNameClause)
+}
+
+const sqlServerQuerySamples = `
+SELECT USER_NAME(r.user_id) AS user_name,
+  DB_NAME(r.database_id) AS db_name,
+  ISNULL(c.client_tcp_port, '') AS client_port,
+  CONVERT(NVARCHAR, TODATETIMEOFFSET(r.start_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET())), 126) AS query_start,
+  s.session_id,
+  s.STATUS AS session_status,
+  ISNULL(s.host_name, '') AS host_name,
+  r.command,
+  SUBSTRING(o.TEXT, (r.statement_start_offset / 2) + 1, (
+      (
+        CASE r.statement_end_offset
+          WHEN - 1
+            THEN DATALENGTH(o.TEXT)
+          ELSE r.statement_end_offset
+          END - r.statement_start_offset
+        ) / 2
+      ) + 1) AS statement_text,
+  r.blocking_session_id,
+  ISNULL(r.wait_type, '') AS wait_type,
+  r.wait_time,
+  r.wait_resource,
+  r.open_transaction_count,
+  r.transaction_id,
+  r.percent_complete,
+  r.estimated_completion_time,
+  r.cpu_time,
+  r.total_elapsed_time,
+  r.reads,
+  r.writes,
+  r.logical_reads,
+  r.transaction_isolation_level,
+  r.LOCK_TIMEOUT,
+  r.DEADLOCK_PRIORITY,
+  r.row_count,
+  r.query_hash,
+  r.query_plan_hash,
+  ISNULL(r.context_info, CONVERT(VARBINARY, '')) AS context_info,
+  
+  s.login_name,
+  s.original_login_name,
+  CASE
+    WHEN o.objectid IS NULL
+      THEN ''
+    ELSE CONCAT (
+        DB_NAME(o.dbid),
+        '.',
+        OBJECT_NAME(o.objectid, o.dbid)
+        )
+    END AS object_name
+FROM sys.dm_exec_requests r
+INNER JOIN sys.dm_exec_sessions s ON r.session_id = s.session_id
+INNER JOIN sys.dm_exec_connections c ON s.session_id = c.session_id
+CROSS APPLY sys.dm_exec_sql_text(r.plan_handle) AS o;
+`
+
+func getSQLServerQuerySamplesQuery() string {
+	return sqlServerQuerySamples
+}
