@@ -463,7 +463,7 @@ func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash st
 		return false, 0
 	}
 
-	if val <= 0 {
+	if val < 0 {
 		return false, 0
 	}
 
