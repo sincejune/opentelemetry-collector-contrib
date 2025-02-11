@@ -353,25 +353,22 @@ SUM(qs.total_logical_writes) AS total_logical_writes,
 SUM(qs.total_rows) AS total_rows,
 SUM(qs.total_grant_kb) as total_grant_kb
 FROM sys.dm_exec_query_stats AS qs
-WHERE qs.last_execution_time BETWEEN DATEADD(SECOND, @granularity, GETDATE()) AND GETDATE() %s
+WHERE qs.last_execution_time BETWEEN DATEADD(SECOND, @lookbackTime, GETDATE()) AND GETDATE() %s
 GROUP BY
 qs.query_hash,
 qs.query_plan_hash;
 `
 
 const (
-	granularityDeclaration = `DECLARE @granularity INT = -%d;`
-	topNValueDeclaration   = `DECLARE @topNValue INT = %d;`
+	lookbackTimeDeclaration = `DECLARE @lookbackTime INT = -%d;`
+	topNValueDeclaration    = `DECLARE @topNValue INT = %d;`
 )
 
-func getSQLServerQueryMetricsQuery(instanceName string, maxQuerySampleCount uint, granularity uint) string {
-	var topQueryCountStatement string
-	var granularityStatement string
+func getSQLServerQueryMetricsQuery(instanceName string, maxQuerySampleCount uint, lookbackTime uint) string {
+	topQueryCountStatement := fmt.Sprintf(topNValueDeclaration, maxQuerySampleCount)
+	lookbackTimeStatement := fmt.Sprintf(lookbackTimeDeclaration, lookbackTime)
+
 	var instanceNameClause string
-
-	topQueryCountStatement = fmt.Sprintf(topNValueDeclaration, maxQuerySampleCount)
-
-	granularityStatement = fmt.Sprintf(granularityDeclaration, granularity)
 
 	if instanceName != "" {
 		instanceNameClause = fmt.Sprintf("AND @@SERVERNAME = '%s'", instanceName)
@@ -379,5 +376,5 @@ func getSQLServerQueryMetricsQuery(instanceName string, maxQuerySampleCount uint
 		instanceNameClause = ""
 	}
 
-	return fmt.Sprintf(sqlServerQueryMetrics, granularityStatement, topQueryCountStatement, instanceNameClause)
+	return fmt.Sprintf(sqlServerQueryMetrics, lookbackTimeStatement, topQueryCountStatement, instanceNameClause)
 }

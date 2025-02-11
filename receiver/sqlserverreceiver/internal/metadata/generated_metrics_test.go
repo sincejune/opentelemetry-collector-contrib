@@ -127,35 +127,27 @@ func TestMetricsBuilder(t *testing.T) {
 			allMetricsCount++
 			mb.RecordSqlserverProcessesBlockedDataPoint(ts, "1")
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryExecutionCountDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalElapsedTimeDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalGrantKbDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalLogicalReadsDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalLogicalWritesDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalPhysicalReadsDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalRowsDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSqlserverQueryTotalWorkerTimeDataPoint(ts, 1)
 
