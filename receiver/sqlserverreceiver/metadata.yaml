@@ -264,56 +264,56 @@ metrics:
     attributes: [database.status]
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.execution_count:
-    enabled: true
+    enabled: false
     description: Number of executions of the query
     unit: "{executions}"
     sum:
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_elapsed_time:
-    enabled: true
+    enabled: false
     description: The total time taken by the query
     unit: "s"
     sum:
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_rows:
-    enabled: true
+    enabled: false
     description: The total rows returned by the query
     unit: "{rows}"
     gauge:
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_worker_time:
-    enabled: true
+    enabled: false
     description: The total CPU time taken by the query
     unit: "s"
     sum:
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_reads:
-    enabled: true
+    enabled: false
     description: The total logical reads performed by the query
     unit: "{operations}"
     gauge:
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_physical_reads:
-    enabled: true
+    enabled: false
     description: The total physical reads performed by the query
     unit: "{operations}"
     gauge:
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_writes:
-    enabled: true
+    enabled: false
     description: The total logical writes performed by the query
     unit: "{operations}"
     gauge:
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_grant_kb:
-    enabled: true
+    enabled: false
     description: The total memory granted to the query
     unit: "kb"
     sum:

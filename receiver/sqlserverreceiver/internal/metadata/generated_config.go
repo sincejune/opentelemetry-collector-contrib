@@ -116,28 +116,28 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: false,
 		},
 		SqlserverQueryExecutionCount: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalElapsedTime: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalGrantKb: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalLogicalReads: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalLogicalWrites: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalPhysicalReads: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalRows: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalWorkerTime: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverResourcePoolDiskThrottledReadRate: MetricConfig{
 			Enabled: false,
