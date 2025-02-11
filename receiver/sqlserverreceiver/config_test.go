@@ -65,7 +65,7 @@ func TestValidate(t *testing.T) {
 			expectedSuccess: true,
 		},
 		{
-			desc: "invalid MaxQuerySampleCount config",
+			desc: "config with invalid MaxQuerySampleCount value",
 			cfg: &Config{
 				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 				ControllerConfig:     scraperhelper.NewDefaultControllerConfig(),
@@ -74,7 +74,7 @@ func TestValidate(t *testing.T) {
 			expectedSuccess: false,
 		},
 		{
-			desc: "invalid TopQueryCount config",
+			desc: "config with invalid TopQueryCount value",
 			cfg: &Config{
 				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 				ControllerConfig:     scraperhelper.NewDefaultControllerConfig(),

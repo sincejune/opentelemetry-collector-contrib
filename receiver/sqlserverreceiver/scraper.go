@@ -367,7 +367,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			break
 		}
 
-		// skipping as not cached
 		if totalElapsedTimeDiffs[i] == 0 {
 			continue
 		}
