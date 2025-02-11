@@ -34,7 +34,7 @@ type sqlServerScraperHelper struct {
 	id                  component.ID
 	sqlQuery            string
 	maxQuerySampleCount uint
-	granularity         uint
+	lookbackTime        uint
 	topQueryCount       uint
 	instanceName        string
 	scrapeCfg           scraperhelper.ControllerConfig
@@ -53,7 +53,7 @@ var _ scraper.Metrics = (*sqlServerScraperHelper)(nil)
 func newSQLServerScraper(id component.ID,
 	query string,
 	maxQuerySampleCount uint,
-	granularity uint,
+	lookbackTime uint,
 	topQueryCount uint,
 	instanceName string,
 	scrapeCfg scraperhelper.ControllerConfig,
@@ -68,7 +68,7 @@ func newSQLServerScraper(id component.ID,
 		id:                  id,
 		sqlQuery:            query,
 		maxQuerySampleCount: maxQuerySampleCount,
-		granularity:         granularity,
+		lookbackTime:        lookbackTime,
 		topQueryCount:       topQueryCount,
 		instanceName:        instanceName,
 		scrapeCfg:           scrapeCfg,
@@ -106,7 +106,7 @@ func (s *sqlServerScraperHelper) ScrapeMetrics(ctx context.Context) (pmetric.Met
 		err = s.recordDatabasePerfCounterMetrics(ctx)
 	case getSQLServerPropertiesQuery(s.instanceName):
 		err = s.recordDatabaseStatusMetrics(ctx)
-	case getSQLServerQueryMetricsQuery(s.instanceName, s.maxQuerySampleCount, s.granularity):
+	case getSQLServerQueryMetricsQuery(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
 		err = s.recordDatabaseQueryMetrics(ctx, s.topQueryCount)
 	default:
 		return pmetric.Metrics{}, fmt.Errorf("Attempted to get metrics from unsupported query: %s", s.sqlQuery)

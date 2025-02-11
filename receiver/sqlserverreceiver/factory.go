@@ -36,7 +36,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		ControllerConfig:     cfg,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
-		Granularity:          10,
+		LookbackTime:         10,
 		MaxQuerySampleCount:  10000,
 		TopQueryCount:        200,
 	}
@@ -73,7 +73,7 @@ func setupQueries(cfg *Config) []string {
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled {
-		queries = append(queries, getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.Granularity))
+		queries = append(queries, getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
 	return queries
 }
@@ -115,7 +115,7 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 		var cache *lru.Cache[string, float64]
 		var err error
 
-		if query == getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.Granularity) {
+		if query == getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
 			cache, err = lru.New[string, float64](int(10 * cfg.MaxQuerySampleCount))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
@@ -125,7 +125,7 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 
 		sqlServerScraper := newSQLServerScraper(id, query,
 			cfg.MaxQuerySampleCount,
-			cfg.Granularity,
+			cfg.LookbackTime,
 			cfg.TopQueryCount,
 			cfg.InstanceName,
 			cfg.ControllerConfig,

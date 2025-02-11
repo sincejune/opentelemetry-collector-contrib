@@ -105,7 +105,7 @@ func TestSuccessfulScrape(t *testing.T) {
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
 			maxQuerySampleCount: 10000,
-			granularity:         10,
+			lookbackTime:        10,
 		}
 
 		actualMetrics, err := scraper.ScrapeMetrics(context.Background())
@@ -119,7 +119,7 @@ func TestSuccessfulScrape(t *testing.T) {
 			expectedFile = filepath.Join("testdata", "expectedPerfCounters.yaml")
 		case getSQLServerPropertiesQuery(scraper.instanceName):
 			expectedFile = filepath.Join("testdata", "expectedProperties.yaml")
-		case getSQLServerQueryMetricsQuery(scraper.instanceName, scraper.maxQuerySampleCount, scraper.granularity):
+		case getSQLServerQueryMetricsQuery(scraper.instanceName, scraper.maxQuerySampleCount, scraper.lookbackTime):
 			expectedFile = filepath.Join("testdata", "expectedQueryMetrics.yaml")
 		}
 
@@ -181,7 +181,7 @@ func TestScrapeQueryMetrics(t *testing.T) {
 		instanceName:        scraper.instanceName,
 		SQL:                 scraper.sqlQuery,
 		maxQuerySampleCount: 10000,
-		granularity:         10,
+		lookbackTime:        10,
 	}
 
 	actualMetrics, err := scraper.ScrapeMetrics(context.Background())
@@ -247,7 +247,7 @@ func TestScrapeQueryInvalidMetrics(t *testing.T) {
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
 			maxQuerySampleCount: 10000,
-			granularity:         10,
+			lookbackTime:        10,
 		},
 	}
 
@@ -359,7 +359,7 @@ type mockClient struct {
 	SQL                 string
 	instanceName        string
 	maxQuerySampleCount uint
-	granularity         uint
+	lookbackTime        uint
 }
 
 type mockInvalidClient struct {
@@ -392,7 +392,7 @@ func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, e
 		queryResults, err = readFile("perfCounterQueryData.txt")
 	case getSQLServerPropertiesQuery(mc.instanceName):
 		queryResults, err = readFile("propertyQueryData.txt")
-	case getSQLServerQueryMetricsQuery(mc.instanceName, mc.maxQuerySampleCount, mc.granularity):
+	case getSQLServerQueryMetricsQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryMetricsQueryData.txt")
 	default:
 		return nil, errors.New("No valid query found")
@@ -411,7 +411,7 @@ func (mc mockInvalidClient) QueryRows(context.Context, ...any) ([]sqlquery.Strin
 	switch mc.SQL {
 	case getSQLServerPropertiesQuery(mc.instanceName):
 		queryResults, err = readFile("propertyInvalidQueryData.txt")
-	case getSQLServerQueryMetricsQuery(mc.instanceName, mc.maxQuerySampleCount, mc.granularity):
+	case getSQLServerQueryMetricsQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryMetricsInvalidQueryData.txt")
 	default:
 		return nil, errors.New("No valid query found")
