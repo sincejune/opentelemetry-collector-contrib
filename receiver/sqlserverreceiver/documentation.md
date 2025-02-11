@@ -307,7 +307,7 @@ This metric is only available when the receiver is configured to directly connec
 
 | Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
 | ---- | ----------- | ---------- | ----------------------- | --------- |
-| {executions} | Sum | Double | Cumulative | true |
+| {executions} | Sum | Double | Unspecified | false |
 
 ### sqlserver.query.total_elapsed_time
 
@@ -317,7 +317,7 @@ This metric is only available when the receiver is configured to directly connec
 
 | Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
 | ---- | ----------- | ---------- | ----------------------- | --------- |
-| s | Sum | Double | Cumulative | true |
+| s | Sum | Double | Unspecified | false |
 
 ### sqlserver.query.total_grant_kb
 
@@ -327,7 +327,7 @@ This metric is only available when the receiver is configured to directly connec
 
 | Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
 | ---- | ----------- | ---------- | ----------------------- | --------- |
-| kb | Sum | Double | Cumulative | true |
+| kb | Sum | Double | Unspecified | false |
 
 ### sqlserver.query.total_logical_reads
 
@@ -377,7 +377,7 @@ This metric is only available when the receiver is configured to directly connec
 
 | Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
 | ---- | ----------- | ---------- | ----------------------- | --------- |
-| s | Sum | Double | Cumulative | true |
+| s | Sum | Double | Unspecified | false |
 
 ### sqlserver.resource_pool.disk.throttled.read.rate
 

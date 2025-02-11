@@ -268,8 +268,6 @@ metrics:
     description: Number of executions of the query
     unit: "{executions}"
     sum:
-      monotonic: true
-      aggregation_temporality: cumulative
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_elapsed_time:
@@ -277,8 +275,6 @@ metrics:
     description: The total time taken by the query
     unit: "s"
     sum:
-      monotonic: true
-      aggregation_temporality: cumulative
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_rows:
@@ -293,8 +289,6 @@ metrics:
     description: The total CPU time taken by the query
     unit: "s"
     sum:
-      monotonic: true
-      aggregation_temporality: cumulative
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_reads:
@@ -323,8 +317,6 @@ metrics:
     description: The total memory granted to the query
     unit: "kb"
     sum:
-      monotonic: true
-      aggregation_temporality: cumulative
       value_type: double
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
 

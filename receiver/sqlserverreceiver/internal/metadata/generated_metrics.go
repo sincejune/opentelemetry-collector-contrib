@@ -929,8 +929,8 @@ func (m *metricSqlserverQueryExecutionCount) init() {
 	m.data.SetDescription("Number of executions of the query")
 	m.data.SetUnit("{executions}")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(true)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+	m.data.Sum().SetIsMonotonic(false)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
 }
 
 func (m *metricSqlserverQueryExecutionCount) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
@@ -980,8 +980,8 @@ func (m *metricSqlserverQueryTotalElapsedTime) init() {
 	m.data.SetDescription("The total time taken by the query")
 	m.data.SetUnit("s")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(true)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+	m.data.Sum().SetIsMonotonic(false)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
 }
 
 func (m *metricSqlserverQueryTotalElapsedTime) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
@@ -1031,8 +1031,8 @@ func (m *metricSqlserverQueryTotalGrantKb) init() {
 	m.data.SetDescription("The total memory granted to the query")
 	m.data.SetUnit("kb")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(true)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+	m.data.Sum().SetIsMonotonic(false)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
 }
 
 func (m *metricSqlserverQueryTotalGrantKb) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
@@ -1278,8 +1278,8 @@ func (m *metricSqlserverQueryTotalWorkerTime) init() {
 	m.data.SetDescription("The total CPU time taken by the query")
 	m.data.SetUnit("s")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(true)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+	m.data.Sum().SetIsMonotonic(false)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
 }
 
 func (m *metricSqlserverQueryTotalWorkerTime) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
