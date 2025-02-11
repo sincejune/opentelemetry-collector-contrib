@@ -5,21 +5,21 @@ package sqlserverreceiver
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sqlquery"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/receiver/receivertest"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/receiver/receivertest"
-
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sqlquery"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 )
 
 func enableAllScraperMetrics(cfg *Config, enabled bool) {
@@ -82,6 +82,14 @@ func TestSuccessfulScrape(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, true)
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = false
 
 	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotEmpty(t, scrapers)
@@ -98,7 +106,7 @@ func TestSuccessfulScrape(t *testing.T) {
 			lookbackTime:        10,
 		}
 
-		_, err = scraper.ScrapeMetrics(context.Background())
+		actualMetrics, err := scraper.ScrapeMetrics(context.Background())
 		assert.NoError(t, err)
 
 		var expectedFile string
@@ -115,15 +123,14 @@ func TestSuccessfulScrape(t *testing.T) {
 
 		// Uncomment line below to re-generate expected metrics.
 		// golden.WriteMetrics(t, expectedFile, actualMetrics)
-		_, err = golden.ReadMetrics(expectedFile)
+		expectedMetrics, err := golden.ReadMetrics(expectedFile)
 		assert.NoError(t, err)
 
-		// TODO: update the assertion.
-		// assert.NoError(t, pmetrictest.CompareMetrics(actualMetrics, expectedMetrics,
-		//	pmetrictest.IgnoreMetricDataPointsOrder(),
-		//	pmetrictest.IgnoreStartTimestamp(),
-		//	pmetrictest.IgnoreTimestamp(),
-		//	pmetrictest.IgnoreResourceMetricsOrder()))
+		assert.NoError(t, pmetrictest.CompareMetrics(actualMetrics, expectedMetrics,
+			pmetrictest.IgnoreMetricDataPointsOrder(),
+			pmetrictest.IgnoreStartTimestamp(),
+			pmetrictest.IgnoreTimestamp(),
+			pmetrictest.IgnoreResourceMetricsOrder()))
 	}
 }
 
@@ -137,7 +144,14 @@ func TestScrapeQueryMetrics(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = true
 
 	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
@@ -146,15 +160,14 @@ func TestScrapeQueryMetrics(t *testing.T) {
 	assert.NotNil(t, scraper.cache)
 
 	// update cache for testing
-	// [{"computer_name":"5e389100f106", "execution_count":"10", "query_hash":"s1", "queryPlanHash":"s3", "sql_instance":"sqlserver" ,"total_elapsed_time":"149705", "total_grant_kb":"13312", "total_logical_reads":"0", "total_logical_writes":"0", "total_physical_reads":"0","total_rows":"107","total_worker_time":"149660"}]
-	queryHash := "7331"
-	queryPlanHash := "7333"
+	queryHash := hex.EncodeToString([]byte("s1"))
+	queryPlanHash := hex.EncodeToString([]byte("s3"))
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "execution_count", 5)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_elapsed_time", 149700)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_grant_kb", 13310)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_reads", 1)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_writes", 1)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_physical_reads", 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_reads", 0)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_writes", 0)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_physical_reads", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_rows", 100)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_worker_time", 149650)
 
@@ -169,28 +182,21 @@ func TestScrapeQueryMetrics(t *testing.T) {
 		lookbackTime:        10,
 	}
 
-	_, err = scraper.ScrapeMetrics(context.Background())
+	actualMetrics, err := scraper.ScrapeMetrics(context.Background())
 	assert.NoError(t, err)
 
-	var expectedFile string
-	switch scraper.sqlQuery {
-	case getSQLServerPropertiesQuery(scraper.instanceName):
-		expectedFile = filepath.Join("testdata", "expectedProperties.yaml")
-	case getSQLServerQueryMetricsQuery(scraper.instanceName, scraper.maxQuerySampleCount, scraper.lookbackTime):
-		expectedFile = filepath.Join("testdata", "expectedQueryMetrics.yaml")
-	}
+	expectedFile := filepath.Join("testdata", "expectedQueryMetrics.yaml")
 
 	// Uncomment line below to re-generate expected metrics.
 	// golden.WriteMetrics(t, expectedFile, actualMetrics)
-	_, err = golden.ReadMetrics(expectedFile)
+	expectedMetrics, err := golden.ReadMetrics(expectedFile)
 	assert.NoError(t, err)
 
-	// assert.NoError(t, pmetrictest.CompareMetrics(actualMetrics, expectedMetrics,
-	//	pmetrictest.IgnoreMetricDataPointsOrder(),
-	//	pmetrictest.IgnoreStartTimestamp(),
-	//	pmetrictest.IgnoreTimestamp(),
-	//	pmetrictest.IgnoreResourceMetricsOrder()))
-	//}
+	assert.NoError(t, pmetrictest.CompareMetrics(actualMetrics, expectedMetrics,
+		pmetrictest.IgnoreMetricDataPointsOrder(),
+		pmetrictest.IgnoreStartTimestamp(),
+		pmetrictest.IgnoreTimestamp(),
+		pmetrictest.IgnoreResourceMetricsOrder()))
 }
 
 func TestScrapeQueryInvalidMetrics(t *testing.T) {
@@ -203,7 +209,14 @@ func TestScrapeQueryInvalidMetrics(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = true
 
 	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
@@ -212,15 +225,14 @@ func TestScrapeQueryInvalidMetrics(t *testing.T) {
 	assert.NotNil(t, scraper.cache)
 
 	// update cache for testing
-	// [{"computer_name":"5e389100f106", "execution_count":"10", "query_hash":"s1", "queryPlanHash":"s3", "sql_instance":"sqlserver" ,"total_elapsed_time":"149705", "total_grant_kb":"13312", "total_logical_reads":"0", "total_logical_writes":"0", "total_physical_reads":"0","total_rows":"107","total_worker_time":"149660"}]
-	queryHash := "7331"
-	queryPlanHash := "7333"
+	queryHash := hex.EncodeToString([]byte("s1"))
+	queryPlanHash := hex.EncodeToString([]byte("s3"))
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "execution_count", 5)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_elapsed_time", 149700)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_grant_kb", 13310)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_reads", 1)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_writes", 1)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_physical_reads", 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_reads", 0)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_writes", 0)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_physical_reads", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_rows", 100)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_worker_time", 149650)
 
@@ -239,26 +251,6 @@ func TestScrapeQueryInvalidMetrics(t *testing.T) {
 
 	_, err = scraper.ScrapeMetrics(context.Background())
 	assert.Error(t, err)
-
-	var expectedFile string
-	switch scraper.sqlQuery {
-	case getSQLServerPropertiesQuery(scraper.instanceName):
-		expectedFile = filepath.Join("testdata", "expectedProperties.yaml")
-	case getSQLServerQueryMetricsQuery(scraper.instanceName, scraper.maxQuerySampleCount, scraper.lookbackTime):
-		expectedFile = filepath.Join("testdata", "expectedQueryMetrics.yaml")
-	}
-
-	// Uncomment line below to re-generate expected metrics.
-	// golden.WriteMetrics(t, expectedFile, actualMetrics)
-	_, err = golden.ReadMetrics(expectedFile)
-	assert.NoError(t, err)
-
-	// assert.NoError(t, pmetrictest.CompareMetrics(actualMetrics, expectedMetrics,
-	//	pmetrictest.IgnoreMetricDataPointsOrder(),
-	//	pmetrictest.IgnoreStartTimestamp(),
-	//	pmetrictest.IgnoreTimestamp(),
-	//	pmetrictest.IgnoreResourceMetricsOrder()))
-	//}
 }
 
 func TestScrapeInvalidQuery(t *testing.T) {
@@ -280,11 +272,9 @@ func TestScrapeInvalidQuery(t *testing.T) {
 		assert.NoError(t, err)
 		defer assert.NoError(t, scraper.Shutdown(context.Background()))
 
-		scraper.client = mockInvalidClient{
-			mockClient: mockClient{
-				instanceName: scraper.instanceName,
-				SQL:          "Invalid SQL query",
-			},
+		scraper.client = mockClient{
+			instanceName: scraper.instanceName,
+			SQL:          "Invalid SQL query",
 		}
 
 		actualMetrics, err := scraper.ScrapeMetrics(context.Background())
