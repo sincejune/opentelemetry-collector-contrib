@@ -437,12 +437,14 @@ func getSQLServerQueryTextAndPlanQuery(instanceName string, maxQuerySampleCount 
 }
 
 const sqlServerQuerySamples = `
-SELECT USER_NAME(r.user_id) AS user_name,
+SELECT
   DB_NAME(r.database_id) AS db_name,
+  ISNULL(c.client_net_address, '') as client_address,
   ISNULL(c.client_tcp_port, '') AS client_port,
   CONVERT(NVARCHAR, TODATETIMEOFFSET(r.start_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET())), 126) AS query_start,
   s.session_id,
   s.STATUS AS session_status,
+  r.STATUS AS request_status,
   ISNULL(s.host_name, '') AS host_name,
   r.command,
   SUBSTRING(o.TEXT, (r.statement_start_offset / 2) + 1, (
@@ -475,17 +477,7 @@ SELECT USER_NAME(r.user_id) AS user_name,
   r.query_plan_hash,
   ISNULL(r.context_info, CONVERT(VARBINARY, '')) AS context_info,
   
-  s.login_name,
-  s.original_login_name,
-  CASE
-    WHEN o.objectid IS NULL
-      THEN ''
-    ELSE CONCAT (
-        DB_NAME(o.dbid),
-        '.',
-        OBJECT_NAME(o.objectid, o.dbid)
-        )
-    END AS object_name
+  s.login_name AS username
 FROM sys.dm_exec_requests r
 INNER JOIN sys.dm_exec_sessions s ON r.session_id = s.session_id
 INNER JOIN sys.dm_exec_connections c ON s.session_id = c.session_id
