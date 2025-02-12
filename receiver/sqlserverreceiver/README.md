@@ -36,6 +36,20 @@ Windows-specific options:
 - `computer_name` (optional): The computer name identifies the SQL Server name or IP address of the computer being monitored.
   If specified, `instance_name` is also required to be defined. This option is ignored in non-Windows environments.
 
+Query-level metric specific options (only useful when query-level metrics collection are enabled):
+- `lookback_time` (optional, example = `60`, default = `10`): The time window (in second) in which to query for metrics.
+- `max_query_sample_count` (optional, example = `5000`, default = `10000`): The maximum number of records to fetch in a single query.
+- `top_query_count`: (optional, example = `100`, default = `200`): The maximum number of record to report (to the next consumer) in a single query.
+- Enable any of below metrics to enable query-level metric collection:
+  - `sqlserver.query.execution_count`
+  - `sqlserver.query.total_elapsed_time`
+  - `sqlserver.query.total_grant_kb`
+  - `sqlserver.query.total_logical_reads`
+  - `sqlserver.query.total_logical_writes`
+  - `sqlserver.query.total_physical_reads`
+  - `sqlserver.query.total_rows`
+  - `sqlserver.query.total_worker_time`
+
 Example:
 
 ```yaml
