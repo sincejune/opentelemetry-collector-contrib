@@ -345,7 +345,7 @@ func TestGetWaitCategory(t *testing.T) {
 	}
 }
 
-func Test(t *testing.T) {
+func TestQueryTextAndPlanQuery(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 	cfg.Username = "sa"
 	cfg.Password = "password"
