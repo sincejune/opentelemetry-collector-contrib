@@ -113,8 +113,6 @@ func TestSuccessfulScrape(t *testing.T) {
 			expectedFile = filepath.Join("testdata", "expectedPerfCounters.yaml")
 		case getSQLServerPropertiesQuery(scraper.instanceName):
 			expectedFile = filepath.Join("testdata", "expectedProperties.yaml")
-		case getSQLServerQueryMetricsQuery(scraper.instanceName, scraper.maxQuerySampleCount, scraper.lookbackTime):
-			expectedFile = filepath.Join("testdata", "expectedQueryMetrics.yaml")
 		}
 
 		// Uncomment line below to re-generate expected metrics.
@@ -173,7 +171,7 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	enableAllScraperMetrics(cfg, false)
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
 
-	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
+	scrapers := setupSQLServerLogsScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
 
 	scraper := scrapers[0]
@@ -258,8 +256,6 @@ func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, e
 		queryResults, err = readFile("perfCounterQueryData.txt")
 	case getSQLServerPropertiesQuery(mc.instanceName):
 		queryResults, err = readFile("propertyQueryData.txt")
-	case getSQLServerQueryMetricsQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
-		queryResults, err = readFile("queryMetricsQueryData.txt")
 	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryTextAndPlanQueryData.txt")
 	default:
@@ -291,55 +287,6 @@ func TestAnyOf(t *testing.T) {
 		t.Run(tt.s, func(t *testing.T) {
 			if got := anyOf(tt.s, tt.f, tt.vals...); got != tt.want {
 				t.Errorf("anyOf(%q, %v) = %v, want %v", tt.s, tt.vals, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestGetWaitCategory(t *testing.T) {
-	tests := []struct {
-		s       string
-		want    uint
-		wantStr string
-	}{
-		{"Unknown", 0, "Unknown"},
-		{"SOS_SCHEDULER_YIELD", 1, "CPU"},
-		{"THREADPOOL", 2, "Worker Thread"},
-		{"LOCK_M_S", 3, "Lock"},
-		{"LATCH_", 4, "Latch"},
-		{"PAGELATCH_SH", 5, "Buffer Latch"},
-		{"PAGEIOLATCH_SH", 6, "Buffer IO"},
-		{"RESOURCE_SEMAPHORE_QUERY_COMPILE", 7, "Compilation"},
-		{"CLR", 8, "SQL CLR"},
-		{"DBMIRROR", 9, "Mirroring"},
-		{"TRANSACTION_MUTEX", 10, "Transaction"},
-		{"XACT_123", 10, "Transaction"},
-		{"SLEEP_", 11, "Idle"},
-		{"LAZYWRITER_SLEEP", 11, "Idle"},
-		{"PREEMPTIVE_", 12, "Preemptive"},
-		{"BROKER_", 13, "Service Broker"},
-		{"LOGMGR", 14, "Tran Log IO"},
-		{"ASYNC_NETWORK_IO", 15, "Network IO"},
-		{"CXCONSUMER", 16, "Parallelism"},
-		{"RESOURCE_SEMAPHORE", 17, "Memory"},
-		{"WAITFOR", 18, "User Wait"},
-		{"TRACEWRITE", 19, "Tracing"},
-		{"FT_RESTART_CRAWL", 20, "Full Text Search"},
-		{"ASYNC_IO_COMPLETION", 21, "Other Disk IO"},
-		{"SE_REPL_", 22, "Replication"},
-		{"RBIO_RG_", 23, "Log Rate Governor"},
-		{"HADR_THROTTLE_LOG_RATE_GOVERNOR", 23, "Log Rate Governor"},
-		{"NonExistent", 0, "Unknown"},
-		{"DIRTY_PAGE_POLL", 0, "Unknown"},
-		{"PVS_PREALLOCATE", 0, "Unknown"},
-		{"WAIT_XTP_HOST_WAIT", 0, "Unknown"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.s, func(t *testing.T) {
-			got, gotStr := getWaitCategory(tt.s)
-			if got != tt.want || gotStr != tt.wantStr {
-				t.Errorf("getWaitCategory(%q) = (%v, %q), want (%v, %q)", tt.s, got, gotStr, tt.want, tt.wantStr)
 			}
 		})
 	}
