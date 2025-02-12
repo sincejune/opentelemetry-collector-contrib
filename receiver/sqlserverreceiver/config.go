@@ -47,7 +47,7 @@ func (cfg *Config) Validate() error {
 	}
 
 	if cfg.TopQueryCount > cfg.MaxQuerySampleCount {
-		return errors.New("`top_query_count` must be between 0 and 200 and less than or equal to `max_query_sample_count`")
+		return errors.New("`top_query_count` must be less than or equal to `max_query_sample_count`")
 	}
 
 	if !directDBConnectionEnabled(cfg) {
