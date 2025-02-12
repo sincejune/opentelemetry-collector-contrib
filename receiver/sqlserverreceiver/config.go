@@ -14,7 +14,6 @@ import (
 
 type LogsConfig struct {
 	EnableQueryTextAndPlan bool `mapstructure:"enable_query_text_and_plan"`
-	EnableQuerySample      bool `mapstructure:"enable_query_sample"`
 }
 
 // Config defines configuration for a sqlserver receiver.

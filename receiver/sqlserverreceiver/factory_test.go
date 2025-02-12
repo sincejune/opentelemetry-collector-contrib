@@ -42,7 +42,6 @@ func TestCreateMetrics(t *testing.T) {
 					},
 					LogsConfig: LogsConfig{
 						EnableQueryTextAndPlan: true,
-						EnableQuerySample:      true,
 					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 					LookbackTime:         10,

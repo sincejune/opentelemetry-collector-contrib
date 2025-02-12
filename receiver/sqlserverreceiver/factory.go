@@ -29,7 +29,7 @@ func NewFactory() receiver.Factory {
 		metadata.Type,
 		createDefaultConfig,
 		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability),
-		receiver.WithLogs(createLogsReceiver, metadata.MetricsStability))
+		receiver.WithLogs(createLogsReceiver, metadata.LogsStability))
 }
 
 func createDefaultConfig() component.Config {
@@ -40,7 +40,6 @@ func createDefaultConfig() component.Config {
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 		LogsConfig: LogsConfig{
 			EnableQueryTextAndPlan: true,
-			EnableQuerySample:      true,
 		},
 		LookbackTime:        10,
 		MaxQuerySampleCount: 10000,
