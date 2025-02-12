@@ -487,7 +487,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 	const physicalReads = "total_physical_reads"
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
-	const queryPlanHandle = "query_plan_handle"
 	rows, err := s.client.QueryRows(ctx)
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
