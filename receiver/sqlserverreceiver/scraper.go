@@ -487,7 +487,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 	const physicalReads = "total_physical_reads"
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
-	const queryPlanHandle = "query_plan_handle"
 	rows, err := s.client.QueryRows(ctx)
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
@@ -503,7 +502,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 
 	for i, row := range rows {
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
-		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHandle]))
+		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
 
 		elapsedTime, err := strconv.ParseFloat(row[totalElapsedTime], 64)
 		if err != nil {
