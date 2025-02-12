@@ -33,9 +33,6 @@ const (
 type sqlServerScraperHelper struct {
 	id                  component.ID
 	sqlQuery            string
-	maxQuerySampleCount uint
-	lookbackTime        uint
-	topQueryCount       uint
 	instanceName        string
 	scrapeCfg           scraperhelper.ControllerConfig
 	clientProviderFunc  sqlquery.ClientProviderFunc
@@ -45,6 +42,9 @@ type sqlServerScraperHelper struct {
 	client              sqlquery.DbClient
 	db                  *sql.DB
 	mb                  *metadata.MetricsBuilder
+	maxQuerySampleCount uint
+	lookbackTime        uint
+	topQueryCount       uint
 	cache               *lru.Cache[string, float64]
 }
 
@@ -52,9 +52,6 @@ var _ scraper.Metrics = (*sqlServerScraperHelper)(nil)
 
 func newSQLServerScraper(id component.ID,
 	query string,
-	maxQuerySampleCount uint,
-	lookbackTime uint,
-	topQueryCount uint,
 	instanceName string,
 	scrapeCfg scraperhelper.ControllerConfig,
 	logger *zap.Logger,
@@ -62,14 +59,14 @@ func newSQLServerScraper(id component.ID,
 	dbProviderFunc sqlquery.DbProviderFunc,
 	clientProviderFunc sqlquery.ClientProviderFunc,
 	mb *metadata.MetricsBuilder,
+	maxQuerySampleCount uint,
+	lookbackTime uint,
+	topQueryCount uint,
 	cache *lru.Cache[string, float64],
 ) *sqlServerScraperHelper {
 	return &sqlServerScraperHelper{
 		id:                  id,
 		sqlQuery:            query,
-		maxQuerySampleCount: maxQuerySampleCount,
-		lookbackTime:        lookbackTime,
-		topQueryCount:       topQueryCount,
 		instanceName:        instanceName,
 		scrapeCfg:           scrapeCfg,
 		logger:              logger,
@@ -77,6 +74,9 @@ func newSQLServerScraper(id component.ID,
 		dbProviderFunc:      dbProviderFunc,
 		clientProviderFunc:  clientProviderFunc,
 		mb:                  mb,
+		maxQuerySampleCount: maxQuerySampleCount,
+		lookbackTime:        lookbackTime,
+		topQueryCount:       topQueryCount,
 		cache:               cache,
 	}
 }
@@ -362,6 +362,8 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 
 	sort.Slice(totalElapsedTimeDiffs, func(i, j int) bool { return totalElapsedTimeDiffs[i] > totalElapsedTimeDiffs[j] })
 
+	timestamp := pcommon.NewTimestampFromTime(time.Now())
+
 	for i, row := range rows {
 		if i >= int(topQueryCount) {
 			break
@@ -381,9 +383,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 		rb.SetSqlserverQueryPlanHash(queryPlanHashVal)
 		s.logger.Debug(fmt.Sprintf("DataRow: %v, PlanHash: %v, Hash: %v", row, queryPlanHashVal, queryHashVal))
 
-		timeStamp := pcommon.NewTimestampFromTime(time.Now())
-
-		s.mb.RecordSqlserverQueryTotalElapsedTimeDataPoint(timeStamp, float64(totalElapsedTimeDiffs[i]))
+		s.mb.RecordSqlserverQueryTotalElapsedTimeDataPoint(timestamp, float64(totalElapsedTimeDiffs[i]))
 
 		rowsReturnVal, err := strconv.ParseInt(row[rowsReturned], 10, 64)
 		if err != nil {
@@ -391,7 +391,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			errs = append(errs, err)
 		}
 		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, rowsReturned, float64(rowsReturnVal)); cached && diff > 0 {
-			s.mb.RecordSqlserverQueryTotalRowsDataPoint(timeStamp, int64(diff))
+			s.mb.RecordSqlserverQueryTotalRowsDataPoint(timestamp, int64(diff))
 		}
 
 		logicalReadsVal, err := strconv.ParseInt(row[logicalReads], 10, 64)
@@ -400,7 +400,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			errs = append(errs, err)
 		}
 		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalReads, float64(logicalReadsVal)); cached && diff > 0 {
-			s.mb.RecordSqlserverQueryTotalLogicalReadsDataPoint(timeStamp, int64(diff))
+			s.mb.RecordSqlserverQueryTotalLogicalReadsDataPoint(timestamp, int64(diff))
 		}
 
 		logicalWritesVal, err := strconv.ParseInt(row[logicalWrites], 10, 64)
@@ -409,7 +409,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			errs = append(errs, err)
 		}
 		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalWrites, float64(logicalWritesVal)); cached && diff > 0 {
-			s.mb.RecordSqlserverQueryTotalLogicalWritesDataPoint(timeStamp, int64(diff))
+			s.mb.RecordSqlserverQueryTotalLogicalWritesDataPoint(timestamp, int64(diff))
 		}
 
 		physicalReadsVal, err := strconv.ParseInt(row[physicalReads], 10, 64)
@@ -418,7 +418,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			errs = append(errs, err)
 		}
 		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, physicalReads, float64(physicalReadsVal)); cached && diff > 0 {
-			s.mb.RecordSqlserverQueryTotalPhysicalReadsDataPoint(timeStamp, int64(diff))
+			s.mb.RecordSqlserverQueryTotalPhysicalReadsDataPoint(timestamp, int64(diff))
 		}
 
 		totalExecutionCount, err := strconv.ParseFloat(row[executionCount], 64)
@@ -426,7 +426,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting metric rows: %s", err))
 		} else {
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached && diff > 0 {
-				s.mb.RecordSqlserverQueryExecutionCountDataPoint(timeStamp, diff)
+				s.mb.RecordSqlserverQueryExecutionCountDataPoint(timestamp, diff)
 			}
 		}
 
@@ -436,7 +436,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			errs = append(errs, err)
 		} else {
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalWorkerTime, workerTime); cached && diff > 0 {
-				s.mb.RecordSqlserverQueryTotalWorkerTimeDataPoint(timeStamp, diff)
+				s.mb.RecordSqlserverQueryTotalWorkerTimeDataPoint(timestamp, diff)
 			}
 		}
 
@@ -446,7 +446,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 			errs = append(errs, err)
 		} else {
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalGrant, memoryGranted); cached && diff > 0 {
-				s.mb.RecordSqlserverQueryTotalGrantKbDataPoint(timeStamp, diff)
+				s.mb.RecordSqlserverQueryTotalGrantKbDataPoint(timestamp, diff)
 			}
 		}
 
@@ -481,6 +481,8 @@ func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash st
 	return true, 0
 }
 
+// sortRows sorts the rows based on the values slice in descending order
+// It returns a new slice of rows sorted according to the values.
 func sortRows(rows []sqlquery.StringMap, values []int64) []sqlquery.StringMap {
 	// Create an index slice to track the original indices of rows
 	indices := make([]int, len(values))

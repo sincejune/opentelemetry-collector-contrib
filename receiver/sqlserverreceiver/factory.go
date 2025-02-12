@@ -124,9 +124,6 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 		}
 
 		sqlServerScraper := newSQLServerScraper(id, query,
-			cfg.MaxQuerySampleCount,
-			cfg.LookbackTime,
-			cfg.TopQueryCount,
 			cfg.InstanceName,
 			cfg.ControllerConfig,
 			params.Logger,
@@ -134,6 +131,9 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 			dbProviderFunc,
 			sqlquery.NewDbClient,
 			metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, params),
+			cfg.MaxQuerySampleCount,
+			cfg.LookbackTime,
+			cfg.TopQueryCount,
 			cache)
 
 		scrapers = append(scrapers, sqlServerScraper)
