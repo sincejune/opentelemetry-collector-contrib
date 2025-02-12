@@ -612,7 +612,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			}
 		}
 
-		obfuscatedSQL, err := obfuscateSQL(row["text"], "{}")
+		obfuscatedSQL, err := obfuscateSQL(row["text"])
 		if err != nil {
 			s.logger.Error("failed to obfuscate query text", zap.Error(err))
 			errs = append(errs, err)
@@ -851,7 +851,7 @@ func obfuscateXMLPlan(rawPlan string) (string, error) {
 			for i := range elem.Attr {
 				for _, attrName := range XMLPlanObfuscationAttrs {
 					if elem.Attr[i].Name.Local == attrName {
-						val, err := obfuscateSQL(elem.Attr[i].Value, "")
+						val, err := obfuscateSQL(elem.Attr[i].Value)
 						if err != nil {
 							// TODO: fix this, sometimes statement cannot be obfuscated.
 							fmt.Println("Unable to obfuscated sql statement: " + elem.Attr[i].Value)

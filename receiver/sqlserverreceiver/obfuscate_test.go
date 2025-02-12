@@ -66,7 +66,7 @@ func TestObfuscateSQL(t *testing.T) {
 	WHERE 
 		sess.status != 'sleeping';
 `
-	result, err := obfuscateSQL(origin, "")
+	result, err := obfuscateSQL(origin)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
