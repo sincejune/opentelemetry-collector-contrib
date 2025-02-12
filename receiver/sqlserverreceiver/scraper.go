@@ -348,7 +348,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 	rows, err := s.client.QueryRows(ctx)
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
-			// TODO: uncomment
 			s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
 		} else {
 			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
@@ -446,7 +445,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting metric rows: %s", err))
 		} else {
-			// TODO: we need a better way to handle execution count
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached && diff > 0 {
 				record.Attributes().PutDouble(executionCount, diff)
 			}
@@ -477,9 +475,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 		}
 		record.Attributes().PutStr("query_text", obfuscatedSQL)
 
-		// TODO: remove this
-		record.Attributes().PutStr("query_plan", row["query_plan"])
-
 		// obfuscate query plan
 		obfuscatedQueryPlan, err := obfuscateXMLPlan(row["query_plan"])
 		if err != nil {
@@ -487,8 +482,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			errs = append(errs, err)
 		}
 		record.Attributes().PutStr("normalized_query_plan", obfuscatedQueryPlan)
-
-		record.Body().SetStr("text")
 	}
 
 	return logs, errors.Join(errs...)
