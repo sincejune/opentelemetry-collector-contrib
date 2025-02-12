@@ -374,16 +374,15 @@ func Test(t *testing.T) {
 	const totalGrant = "total_grant_kb"
 
 	queryHash := hex.EncodeToString([]byte("0x37849E874171E3F3"))
-	queryPlanHandle := hex.EncodeToString([]byte("0x06000100E2B3C02AA042A7001000000001000000000000000000000000000000000000000000000000000000"))
-	queryHashPlan := hex.EncodeToString([]byte("0xD3112909429A1B50"))
-	scraper.cacheAndDiff(queryHash, queryPlanHandle, totalElapsedTime, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, rowsReturned, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, logicalReads, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, logicalWrites, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, physicalReads, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, executionCount, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, totalWorkerTime, 1)
-	scraper.cacheAndDiff(queryHash, queryHashPlan, totalGrant, 1)
+	queryPlanHash := hex.EncodeToString([]byte("0xD3112909429A1B50"))
+	scraper.cacheAndDiff(queryHash, queryPlanHash, totalElapsedTime, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, rowsReturned, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalReads, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalWrites, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, physicalReads, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, executionCount, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, totalWorkerTime, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, totalGrant, 1)
 
 	scraper.client = mockClient{
 		instanceName:        scraper.instanceName,
