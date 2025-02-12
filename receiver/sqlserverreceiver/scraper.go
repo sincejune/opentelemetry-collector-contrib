@@ -37,9 +37,6 @@ const (
 type sqlServerScraperHelper struct {
 	id                  component.ID
 	sqlQuery            string
-	maxQuerySampleCount uint
-	granularity         uint
-	topQueryCount       uint
 	instanceName        string
 	scrapeCfg           scraperhelper.ControllerConfig
 	clientProviderFunc  sqlquery.ClientProviderFunc
@@ -49,6 +46,9 @@ type sqlServerScraperHelper struct {
 	client              sqlquery.DbClient
 	db                  *sql.DB
 	mb                  *metadata.MetricsBuilder
+	maxQuerySampleCount uint
+	lookbackTime        uint
+	topQueryCount       uint
 	cache               *lru.Cache[string, float64]
 }
 
@@ -59,9 +59,6 @@ var (
 
 func newSQLServerScraper(id component.ID,
 	query string,
-	maxQuerySampleCount uint,
-	granularity uint,
-	topQueryCount uint,
 	instanceName string,
 	scrapeCfg scraperhelper.ControllerConfig,
 	logger *zap.Logger,
@@ -69,14 +66,14 @@ func newSQLServerScraper(id component.ID,
 	dbProviderFunc sqlquery.DbProviderFunc,
 	clientProviderFunc sqlquery.ClientProviderFunc,
 	mb *metadata.MetricsBuilder,
+	maxQuerySampleCount uint,
+	lookbackTime uint,
+	topQueryCount uint,
 	cache *lru.Cache[string, float64],
 ) *sqlServerScraperHelper {
 	return &sqlServerScraperHelper{
 		id:                  id,
 		sqlQuery:            query,
-		maxQuerySampleCount: maxQuerySampleCount,
-		granularity:         granularity,
-		topQueryCount:       topQueryCount,
 		instanceName:        instanceName,
 		scrapeCfg:           scrapeCfg,
 		logger:              logger,
@@ -84,6 +81,9 @@ func newSQLServerScraper(id component.ID,
 		dbProviderFunc:      dbProviderFunc,
 		clientProviderFunc:  clientProviderFunc,
 		mb:                  mb,
+		maxQuerySampleCount: maxQuerySampleCount,
+		lookbackTime:        lookbackTime,
+		topQueryCount:       topQueryCount,
 		cache:               cache,
 	}
 }
@@ -107,7 +107,7 @@ func (s *sqlServerScraperHelper) ScrapeMetrics(ctx context.Context) (pmetric.Met
 	var err error
 
 	switch s.sqlQuery {
-	case getSQLServerQueryMetricsQuery(s.instanceName, s.maxQuerySampleCount, s.granularity):
+	case getSQLServerQueryMetricsQuery(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
 		err = s.recordDatabaseQueryMetrics(ctx, s.topQueryCount)
 	case getSQLServerDatabaseIOQuery(s.instanceName):
 		err = s.recordDatabaseIOMetrics(ctx)
@@ -128,7 +128,7 @@ func (s *sqlServerScraperHelper) ScrapeMetrics(ctx context.Context) (pmetric.Met
 
 func (s *sqlServerScraperHelper) ScrapeLogs(ctx context.Context) (plog.Logs, error) {
 	switch s.sqlQuery {
-	case getSQLServerQueryTextAndPlanQuery(s.instanceName, s.maxQuerySampleCount, s.granularity):
+	case getSQLServerQueryTextAndPlanQuery(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
 		// TODO: Add a logs builder for that
 		return s.recordDatabaseQueryTextAndPlan(ctx, s.topQueryCount)
 	case getSQLServerQuerySamplesQuery():
@@ -918,6 +918,8 @@ func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash st
 	return true, 0
 }
 
+// sortRows sorts the rows based on the values slice in descending order
+// It returns a new slice of rows sorted according to the values.
 func sortRows(rows []sqlquery.StringMap, values []int64) []sqlquery.StringMap {
 	// Create an index slice to track the original indices of rows
 	indices := make([]int, len(values))

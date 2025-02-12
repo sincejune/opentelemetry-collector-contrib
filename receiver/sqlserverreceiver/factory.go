@@ -42,7 +42,7 @@ func createDefaultConfig() component.Config {
 			EnableQueryTextAndPlan: true,
 			EnableQuerySample:      true,
 		},
-		Granularity:         10,
+		LookbackTime:        10,
 		MaxQuerySampleCount: 10000,
 		TopQueryCount:       200,
 	}
@@ -79,7 +79,7 @@ func setupQueries(cfg *Config) []string {
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled {
-		queries = append(queries, getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.Granularity))
+		queries = append(queries, getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
 	return queries
 }
@@ -88,7 +88,7 @@ func setupLogQueries(cfg *Config) []string {
 	var queries []string
 
 	if cfg.EnableQueryTextAndPlan {
-		queries = append(queries, getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.Granularity))
+		queries = append(queries, getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
 	if cfg.EnableQuerySample {
 		queries = append(queries, getSQLServerQuerySamplesQuery())
@@ -133,8 +133,8 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 		var cache *lru.Cache[string, float64]
 		var err error
 
-		if query == getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.Granularity) {
-			cache, err = lru.New[string, float64](10000 * 10)
+		if query == getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
+			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
@@ -142,9 +142,6 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 		}
 
 		sqlServerScraper := newSQLServerScraper(id, query,
-			cfg.MaxQuerySampleCount,
-			cfg.Granularity,
-			cfg.TopQueryCount,
 			cfg.InstanceName,
 			cfg.ControllerConfig,
 			params.Logger,
@@ -152,6 +149,9 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 			dbProviderFunc,
 			sqlquery.NewDbClient,
 			metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, params),
+			cfg.MaxQuerySampleCount,
+			cfg.LookbackTime,
+			cfg.TopQueryCount,
 			cache)
 
 		scrapers = append(scrapers, sqlServerScraper)
@@ -186,15 +186,15 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 		var cache *lru.Cache[string, float64]
 		var err error
 
-		if query == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.Granularity) {
-			cache, err = lru.New[string, float64](10000 * 10)
+		if query == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
+			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
 			}
 		}
 		if query == getSQLServerQuerySamplesQuery() {
-			cache, err = lru.New[string, float64](10000 * 10)
+			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
@@ -202,9 +202,6 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 		}
 
 		sqlServerScraper := newSQLServerScraper(id, query,
-			cfg.MaxQuerySampleCount,
-			cfg.Granularity,
-			cfg.TopQueryCount,
 			cfg.InstanceName,
 			cfg.ControllerConfig,
 			params.Logger,
@@ -212,6 +209,9 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 			dbProviderFunc,
 			sqlquery.NewDbClient,
 			metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, params),
+			cfg.MaxQuerySampleCount,
+			cfg.LookbackTime,
+			cfg.TopQueryCount,
 			cache)
 
 		scrapers = append(scrapers, sqlServerScraper)

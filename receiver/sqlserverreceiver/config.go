@@ -31,7 +31,7 @@ type Config struct {
 	Port                uint                `mapstructure:"port"`
 	Server              string              `mapstructure:"server"`
 	Username            string              `mapstructure:"username"`
-	Granularity         uint                `mapstructure:"granularity"`
+	LookbackTime        uint                `mapstructure:"lookback_time"`
 	MaxQuerySampleCount uint                `mapstructure:"max_query_sample_count"`
 	TopQueryCount       uint                `mapstructure:"top_query_count"`
 }
@@ -46,7 +46,7 @@ func (cfg *Config) Validate() error {
 		return errors.New("`max_query_sample_count` must be between 0 and 10000")
 	}
 
-	if cfg.TopQueryCount > 200 || cfg.TopQueryCount > cfg.MaxQuerySampleCount {
+	if cfg.TopQueryCount > cfg.MaxQuerySampleCount {
 		return errors.New("`top_query_count` must be between 0 and 200 and less than or equal to `max_query_sample_count`")
 	}
 
