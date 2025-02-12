@@ -100,14 +100,14 @@ func (s *sqlServerScraperHelper) ScrapeMetrics(ctx context.Context) (pmetric.Met
 	var err error
 
 	switch s.sqlQuery {
-	case getSQLServerQueryMetricsQuery(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
-		err = s.recordDatabaseQueryMetrics(ctx, s.topQueryCount)
 	case getSQLServerDatabaseIOQuery(s.instanceName):
 		err = s.recordDatabaseIOMetrics(ctx)
 	case getSQLServerPerformanceCounterQuery(s.instanceName):
 		err = s.recordDatabasePerfCounterMetrics(ctx)
 	case getSQLServerPropertiesQuery(s.instanceName):
 		err = s.recordDatabaseStatusMetrics(ctx)
+	case getSQLServerQueryMetricsQuery(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
+		err = s.recordDatabaseQueryMetrics(ctx, s.topQueryCount)
 	default:
 		return pmetric.Metrics{}, fmt.Errorf("Attempted to get metrics from unsupported query: %s", s.sqlQuery)
 	}
