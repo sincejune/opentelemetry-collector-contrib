@@ -31,7 +31,6 @@ func lazyInitObfuscator() *obfuscate.Obfuscator {
 func obfuscateSQL(rawQuery string) (string, error) {
 	obfuscatedQuery, err := lazyInitObfuscator().ObfuscateSQLStringWithOptions(rawQuery, &obfuscate.SQLConfig{})
 	if err != nil {
-		// memory will be freed by caller
 		return "", err
 	}
 

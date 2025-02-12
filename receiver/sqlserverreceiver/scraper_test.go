@@ -195,10 +195,6 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 }
 
 func TestSortRows(t *testing.T) {
-	// TODO: add seed
-	// rand.New(new)
-	// rand.Seed(time.Now().UnixNano())
-	// rand.New()
 	weights := make([]int64, 50)
 
 	for i := range weights {
