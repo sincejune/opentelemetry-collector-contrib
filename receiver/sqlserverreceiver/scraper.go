@@ -612,16 +612,3 @@ func sortRows(rows []sqlquery.StringMap, values []int64) []sqlquery.StringMap {
 
 	return sorted
 }
-
-func anyOf(s string, f func(a string, b string) bool, vals ...string) bool {
-	if len(vals) == 0 {
-		return false
-	}
-
-	for _, v := range vals {
-		if f(s, v) {
-			return true
-		}
-	}
-	return false
-}

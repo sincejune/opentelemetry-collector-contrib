@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,15 +47,6 @@ func enableAllScraperMetrics(cfg *Config, enabled bool) {
 	cfg.MetricsBuilderConfig.Metrics.SqlserverResourcePoolDiskThrottledWriteRate.Enabled = enabled
 
 	cfg.MetricsBuilderConfig.Metrics.SqlserverUserConnectionCount.Enabled = enabled
-
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = enabled
 }
 
 func TestEmptyScrape(t *testing.T) {
@@ -169,7 +159,6 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
 
 	scrapers := setupSQLServerLogsScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
@@ -193,10 +182,6 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 }
 
 func TestSortRows(t *testing.T) {
-	// TODO: add seed
-	// rand.New(new)
-	// rand.Seed(time.Now().UnixNano())
-	// rand.New()
 	weights := make([]int64, 50)
 
 	for i := range weights {
@@ -266,30 +251,6 @@ func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, e
 		return nil, err
 	}
 	return queryResults, nil
-}
-
-func TestAnyOf(t *testing.T) {
-	tests := []struct {
-		s    string
-		f    func(a, b string) bool
-		vals []string
-		want bool
-	}{
-		{"TRANSACTION_MUTEX", strings.HasPrefix, []string{"XACT", "DTC"}, false},
-		{"XACT_123", strings.HasPrefix, []string{"XACT", "DTC"}, true},
-		{"DTC_123", strings.HasPrefix, []string{"XACT", "DTC"}, true},
-		{"", strings.HasPrefix, []string{}, false},
-		{"hello", func(a, b string) bool { return a == b }, []string{"hello", "world"}, true},
-		{"notfound", func(a, b string) bool { return a == b }, []string{"hello", "world"}, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.s, func(t *testing.T) {
-			if got := anyOf(tt.s, tt.f, tt.vals...); got != tt.want {
-				t.Errorf("anyOf(%q, %v) = %v, want %v", tt.s, tt.vals, got, tt.want)
-			}
-		})
-	}
 }
 
 func TestQueryTextAndPlanQuery(t *testing.T) {
