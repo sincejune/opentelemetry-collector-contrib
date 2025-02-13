@@ -762,7 +762,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing row count. original value: %s, err: %s", row[rowCount], err))
 		}
 
-		obfuscatedStatement, err := obfuscateSQL(row[statementText], "")
+		obfuscatedStatement, err := obfuscateSQL(row[statementText])
 		if err != nil {
 			s.logger.Error(fmt.Sprintf("failed to obfuscate SQL statement value: %s err: %s", row[statementText], err))
 		}
