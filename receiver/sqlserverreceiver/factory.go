@@ -116,7 +116,7 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 		var err error
 
 		if query == getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
-			cache, err = lru.New[string, int64](int(10 * cfg.MaxQuerySampleCount))
+			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
