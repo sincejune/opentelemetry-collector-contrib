@@ -299,6 +299,86 @@ This metric is only available when the receiver is configured to directly connec
 | ---- | ----------- | ---------- |
 | {processes} | Gauge | Int |
 
+### sqlserver.query.execution_count
+
+Total number of times the query was executed since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| {executions} | Sum | Int | Delta | true |
+
+### sqlserver.query.returned_rows
+
+Total number of rows returned by the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| {rows} | Sum | Int | Delta | true |
+
+### sqlserver.query.total_elapsed_time
+
+Cumulative execution time across all executions of the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| ms | Sum | Int | Delta | true |
+
+### sqlserver.query.total_grant_kb
+
+The total memory granted to the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| kb | Sum | Int | Delta | true |
+
+### sqlserver.query.total_logical_reads
+
+The total logical reads performed by the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| {operations} | Sum | Int | Delta | true |
+
+### sqlserver.query.total_logical_writes
+
+The total logical writes performed by the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| {operations} | Sum | Int | Delta | true |
+
+### sqlserver.query.total_physical_reads
+
+The total physical reads performed by the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| {operations} | Sum | Int | Delta | true |
+
+### sqlserver.query.total_worker_time
+
+The total CPU time taken by the query since the last scrape
+
+This metric is only available when the receiver is configured to directly connect to SQL Server.
+
+| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic |
+| ---- | ----------- | ---------- | ----------------------- | --------- |
+| ms | Sum | Int | Delta | true |
+
 ### sqlserver.resource_pool.disk.throttled.read.rate
 
 The number of read operations that were throttled in the last second
@@ -326,3 +406,5 @@ This metric is only available when the receiver is configured to directly connec
 | sqlserver.computer.name | The name of the SQL Server instance being monitored. | Any Str | false |
 | sqlserver.database.name | The name of the SQL Server database. | Any Str | true |
 | sqlserver.instance.name | The name of the SQL Server instance being monitored. | Any Str | false |
+| sqlserver.query.hash | Hash of the query | Any Str | false |
+| sqlserver.query_plan.hash | Hash of the query plan | Any Str | false |
