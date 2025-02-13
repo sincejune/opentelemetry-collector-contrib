@@ -41,7 +41,7 @@ func createDefaultConfig() component.Config {
 		LogsConfig: LogsConfig{
 			EnableQueryTextAndPlan: true,
 		},
-		LookbackTime:        10,
+		LookbackTime:        uint(2 * cfg.CollectionInterval / time.Second),
 		MaxQuerySampleCount: 10000,
 		TopQueryCount:       200,
 	}
@@ -117,7 +117,7 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 	for i, query := range queries {
 		id := component.NewIDWithName(metadata.Type, fmt.Sprintf("query-%d: %s", i, query))
 
-		var cache *lru.Cache[string, float64]
+		var cache *lru.Cache[string, int64]
 
 		sqlServerScraper := newSQLServerScraper(id, query,
 			cfg.InstanceName,
@@ -161,11 +161,11 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 	for i, query := range queries {
 		id := component.NewIDWithName(metadata.Type, fmt.Sprintf("logs-query-%d: %s", i, query))
 
-		var cache *lru.Cache[string, float64]
+		var cache *lru.Cache[string, int64]
 		var err error
 
 		if query == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
-			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
+			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue

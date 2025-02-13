@@ -49,7 +49,7 @@ type sqlServerScraperHelper struct {
 	maxQuerySampleCount uint
 	lookbackTime        uint
 	topQueryCount       uint
-	cache               *lru.Cache[string, float64]
+	cache               *lru.Cache[string, int64]
 }
 
 var (
@@ -69,7 +69,7 @@ func newSQLServerScraper(id component.ID,
 	maxQuerySampleCount uint,
 	lookbackTime uint,
 	topQueryCount uint,
-	cache *lru.Cache[string, float64],
+	cache *lru.Cache[string, int64],
 ) *sqlServerScraperHelper {
 	return &sqlServerScraperHelper{
 		id:                  id,
@@ -361,12 +361,12 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
 		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
 
-		elapsedTime, err := strconv.ParseFloat(row[totalElapsedTime], 64)
+		elapsedTime, err := strconv.ParseInt(row[totalElapsedTime], 10, 64)
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting logs rows: %s", err))
 		} else {
-			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalElapsedTime, elapsedTime); cached && diff > 0 {
-				totalElapsedTimeDiffs[i] = int64(diff)
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalElapsedTime, elapsedTime/1000); cached && diff > 0 {
+				totalElapsedTimeDiffs[i] = diff
 			}
 		}
 	}
@@ -403,15 +403,15 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 
 		s.logger.Debug(fmt.Sprintf("DataRow: %v, PlanHash: %v, Hash: %v", row, queryPlanHashVal, queryHashVal))
 
-		record.Attributes().PutDouble(totalElapsedTime, float64(totalElapsedTimeDiffs[i]))
+		record.Attributes().PutInt(totalElapsedTime, totalElapsedTimeDiffs[i])
 
 		rowsReturnVal, err := strconv.ParseInt(row[rowsReturned], 10, 64)
 		if err != nil {
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, rowsReturned, float64(rowsReturnVal)); cached && diff > 0 {
-			record.Attributes().PutInt(rowsReturned, int64(diff))
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, rowsReturned, rowsReturnVal); cached && diff > 0 {
+			record.Attributes().PutInt(rowsReturned, diff)
 		}
 
 		logicalReadsVal, err := strconv.ParseInt(row[logicalReads], 10, 64)
@@ -419,8 +419,8 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalReads, float64(logicalReadsVal)); cached && diff > 0 {
-			record.Attributes().PutInt(logicalReads, int64(diff))
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalReads, logicalReadsVal); cached && diff > 0 {
+			record.Attributes().PutInt(logicalReads, diff)
 		}
 
 		logicalWritesVal, err := strconv.ParseInt(row[logicalWrites], 10, 64)
@@ -428,8 +428,8 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalWrites, float64(logicalWritesVal)); cached && diff > 0 {
-			record.Attributes().PutInt(logicalWrites, int64(diff))
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalWrites, logicalWritesVal); cached && diff > 0 {
+			record.Attributes().PutInt(logicalWrites, diff)
 		}
 
 		physicalReadsVal, err := strconv.ParseInt(row[physicalReads], 10, 64)
@@ -437,34 +437,37 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, physicalReads, float64(physicalReadsVal)); cached && diff > 0 {
-			record.Attributes().PutInt(physicalReads, int64(diff))
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, physicalReads, physicalReadsVal); cached && diff > 0 {
+			record.Attributes().PutInt(physicalReads, diff)
 		}
 
-		totalExecutionCount, err := strconv.ParseFloat(row[executionCount], 64)
+		totalExecutionCount, err := strconv.ParseInt(row[executionCount], 10, 64)
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting metric rows: %s", err))
+			errs = append(errs, err)
 		} else {
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached && diff > 0 {
-				record.Attributes().PutDouble(executionCount, diff)
+				record.Attributes().PutInt(executionCount, diff)
 			}
 		}
 
-		workerTime, err := strconv.ParseFloat(row[totalWorkerTime], 64)
+		workerTime, err := strconv.ParseInt(row[totalWorkerTime], 10, 64)
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed parsing metric total_worker_time: %s", err))
+			errs = append(errs, err)
 		} else {
-			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalWorkerTime, workerTime); cached && diff > 0 {
-				record.Attributes().PutDouble(totalWorkerTime, diff)
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalWorkerTime, workerTime/1000); cached && diff > 0 {
+				record.Attributes().PutInt(totalWorkerTime, diff)
 			}
 		}
 
-		memoryGranted, err := strconv.ParseFloat(row[totalGrant], 64)
+		memoryGranted, err := strconv.ParseInt(row[totalGrant], 10, 64)
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed parsing metric total_grant_kb: %s", err))
+			errs = append(errs, err)
 		} else {
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalGrant, memoryGranted); cached && diff > 0 {
-				record.Attributes().PutDouble(totalGrant, diff)
+				record.Attributes().PutInt(totalGrant, diff)
 			}
 		}
 
@@ -556,7 +559,7 @@ func obfuscateXMLPlan(rawPlan string) (string, error) {
 	return buffer.String(), nil
 }
 
-func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash string, column string, val float64) (bool, float64) {
+func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash string, column string, val int64) (bool, int64) {
 	if s.cache == nil {
 		s.logger.Error("LRU cache is not successfully initialized, skipping caching and diffing")
 		return false, 0

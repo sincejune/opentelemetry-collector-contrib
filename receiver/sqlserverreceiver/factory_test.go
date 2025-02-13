@@ -44,7 +44,7 @@ func TestCreateMetrics(t *testing.T) {
 						EnableQueryTextAndPlan: true,
 					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
-					LookbackTime:         10,
+					LookbackTime:         uint(2 * 10),
 					MaxQuerySampleCount:  10000,
 					TopQueryCount:        200,
 				}

@@ -89,7 +89,7 @@ func TestSuccessfulScrape(t *testing.T) {
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
 			maxQuerySampleCount: 10000,
-			lookbackTime:        10,
+			lookbackTime:        20,
 		}
 
 		actualMetrics, err := scraper.ScrapeMetrics(context.Background())
@@ -166,19 +166,19 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	scraper := scrapers[0]
 	cached, val := scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", -1)
 	assert.False(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 1)
 	assert.False(t, cached)
-	assert.Equal(t, 1.0, val)
+	assert.Equal(t, int64(1), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 1)
 	assert.True(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 3)
 	assert.True(t, cached)
-	assert.Equal(t, 2.0, val)
+	assert.Equal(t, int64(2), val)
 }
 
 func TestSortRows(t *testing.T) {
@@ -295,10 +295,11 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 		instanceName:        scraper.instanceName,
 		SQL:                 scraper.sqlQuery,
 		maxQuerySampleCount: 10000,
-		lookbackTime:        10,
+		lookbackTime:        20,
 	}
 
 	actualLogs, err := scraper.ScrapeLogs(context.Background())
+	// golden.WriteLogs(t, filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"), actualLogs)
 	assert.NoError(t, err)
 	expectedLogs, _ := golden.ReadLogs(filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"))
 	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())
