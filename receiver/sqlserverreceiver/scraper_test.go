@@ -105,7 +105,7 @@ func TestSuccessfulScrape(t *testing.T) {
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
 			maxQuerySampleCount: 10000,
-			lookbackTime:        10,
+			lookbackTime:        20,
 		}
 
 		actualMetrics, err := scraper.ScrapeMetrics(context.Background())
@@ -181,7 +181,7 @@ func TestScrapeQueryMetrics(t *testing.T) {
 		instanceName:        scraper.instanceName,
 		SQL:                 scraper.sqlQuery,
 		maxQuerySampleCount: 10000,
-		lookbackTime:        10,
+		lookbackTime:        20,
 	}
 
 	actualMetrics, err := scraper.ScrapeMetrics(context.Background())

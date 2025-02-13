@@ -36,7 +36,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		ControllerConfig:     cfg,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
-		LookbackTime:         uint(2 * cfg.CollectionInterval),
+		LookbackTime:         uint(2 * cfg.CollectionInterval / time.Second),
 		MaxQuerySampleCount:  10000,
 		TopQueryCount:        200,
 	}

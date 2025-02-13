@@ -41,7 +41,7 @@ func TestCreateMetrics(t *testing.T) {
 						InitialDelay:       time.Second,
 					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
-					LookbackTime:         10,
+					LookbackTime:         uint(2 * 10),
 					MaxQuerySampleCount:  10000,
 					TopQueryCount:        200,
 				}
