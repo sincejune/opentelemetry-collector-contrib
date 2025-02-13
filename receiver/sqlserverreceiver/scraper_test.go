@@ -271,6 +271,8 @@ func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, e
 		queryResults, err = readFile("queryMetricsQueryData.txt")
 	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryTextAndPlanQueryData.txt")
+	case getSQLServerQuerySamplesQuery():
+		queryResults, err = readFile("recordDatabaseSampleQueryData.txt")
 	default:
 		return nil, errors.New("No valid query found")
 	}
@@ -400,9 +402,43 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	}
 
 	actualLogs, err := scraper.ScrapeLogs(context.Background())
-	// golden.WriteLogs(t, filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"), actualLogs)
 	assert.NoError(t, err)
 	expectedLogs, _ := golden.ReadLogs(filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"))
 	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())
+	assert.NoError(t, errs)
+}
+
+func TestRecordDatabaseSampleQuery(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.Username = "sa"
+	cfg.Password = "password"
+	cfg.Port = 1433
+	cfg.Server = "0.0.0.0"
+	cfg.MetricsBuilderConfig.ResourceAttributes.SqlserverInstanceName.Enabled = true
+	assert.NoError(t, cfg.Validate())
+
+	enableAllScraperMetrics(cfg, false)
+	cfg.EnableQuerySample = true
+	cfg.EnableQueryTextAndPlan = false
+
+	scrapers := setupSQLServerLogsScrapers(receivertest.NewNopSettings(), cfg)
+	assert.NotNil(t, scrapers)
+
+	scraper := scrapers[0]
+	assert.NotNil(t, scraper.cache)
+
+	scraper.client = mockClient{
+		instanceName:        scraper.instanceName,
+		SQL:                 scraper.sqlQuery,
+		maxQuerySampleCount: 10000,
+		lookbackTime:        20,
+	}
+
+	actualLogs, err := scraper.ScrapeLogs(context.Background())
+
+	assert.NoError(t, err)
+	expectedLogs, _ := golden.ReadLogs(filepath.Join("testdata", "expectedRecordDatabaseSampleQuery.yaml"))
+	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())
+
 	assert.NoError(t, errs)
 }
