@@ -425,6 +425,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 		totalExecutionCount, err := strconv.ParseInt(row[executionCount], 10, 64)
 		if err != nil {
 			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting metric rows: %s", err))
+			errs = append(errs, err)
 		} else {
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached && diff > 0 {
 				s.mb.RecordSqlserverQueryExecutionCountDataPoint(timestamp, diff)
