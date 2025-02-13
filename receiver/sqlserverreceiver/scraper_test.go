@@ -50,12 +50,12 @@ func enableAllScraperMetrics(cfg *Config, enabled bool) {
 	cfg.MetricsBuilderConfig.Metrics.SqlserverUserConnectionCount.Enabled = enabled
 
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = enabled
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = enabled
 }
 
@@ -86,6 +86,14 @@ func TestSuccessfulScrape(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, true)
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = false
 
 	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotEmpty(t, scrapers)
@@ -99,7 +107,7 @@ func TestSuccessfulScrape(t *testing.T) {
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
 			maxQuerySampleCount: 10000,
-			lookbackTime:        10,
+			lookbackTime:        20,
 		}
 
 		actualMetrics, err := scraper.ScrapeMetrics(context.Background())
@@ -171,7 +179,7 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = true
 
 	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
@@ -179,19 +187,24 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	scraper := scrapers[0]
 	cached, val := scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", -1)
 	assert.False(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 1)
 	assert.False(t, cached)
-	assert.Equal(t, 1.0, val)
+	assert.Equal(t, int64(1), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 1)
 	assert.True(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 3)
 	assert.True(t, cached)
-	assert.Equal(t, 2.0, val)
+	assert.Equal(t, int64(2), val)
+
+	scraper.cache = nil
+	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 2)
+	assert.False(t, cached)
+	assert.Equal(t, int64(0), val)
 }
 
 func TestSortRows(t *testing.T) {
@@ -383,10 +396,11 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 		instanceName:        scraper.instanceName,
 		SQL:                 scraper.sqlQuery,
 		maxQuerySampleCount: 10000,
-		lookbackTime:        10,
+		lookbackTime:        20,
 	}
 
 	actualLogs, err := scraper.ScrapeLogs(context.Background())
+	// golden.WriteLogs(t, filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"), actualLogs)
 	assert.NoError(t, err)
 	expectedLogs, _ := golden.ReadLogs(filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"))
 	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())

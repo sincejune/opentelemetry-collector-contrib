@@ -35,6 +35,8 @@ all_set:
       enabled: true
     sqlserver.query.execution_count:
       enabled: true
+    sqlserver.query.returned_rows:
+      enabled: true
     sqlserver.query.total_elapsed_time:
       enabled: true
     sqlserver.query.total_grant_kb:
@@ -44,8 +46,6 @@ all_set:
     sqlserver.query.total_logical_writes:
       enabled: true
     sqlserver.query.total_physical_reads:
-      enabled: true
-    sqlserver.query.total_rows:
       enabled: true
     sqlserver.query.total_worker_time:
       enabled: true
@@ -118,6 +118,8 @@ none_set:
       enabled: false
     sqlserver.query.execution_count:
       enabled: false
+    sqlserver.query.returned_rows:
+      enabled: false
     sqlserver.query.total_elapsed_time:
       enabled: false
     sqlserver.query.total_grant_kb:
@@ -127,8 +129,6 @@ none_set:
     sqlserver.query.total_logical_writes:
       enabled: false
     sqlserver.query.total_physical_reads:
-      enabled: false
-    sqlserver.query.total_rows:
       enabled: false
     sqlserver.query.total_worker_time:
       enabled: false

@@ -42,7 +42,7 @@ func createDefaultConfig() component.Config {
 			EnableQueryTextAndPlan: true,
 			EnableQuerySample:      true,
 		},
-		LookbackTime:        10,
+		LookbackTime:        uint(2 * cfg.CollectionInterval / time.Second),
 		MaxQuerySampleCount: 10000,
 		TopQueryCount:       200,
 	}
@@ -72,12 +72,12 @@ func setupQueries(cfg *Config) []string {
 	}
 
 	if cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled ||
+		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled ||
-		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled ||
 		cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled {
 		queries = append(queries, getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
@@ -130,11 +130,11 @@ func setupSQLServerScrapers(params receiver.Settings, cfg *Config) []*sqlServerS
 	for i, query := range queries {
 		id := component.NewIDWithName(metadata.Type, fmt.Sprintf("query-%d: %s", i, query))
 
-		var cache *lru.Cache[string, float64]
+		var cache *lru.Cache[string, int64]
 		var err error
 
 		if query == getSQLServerQueryMetricsQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
-			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
+			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
@@ -183,18 +183,18 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 	for i, query := range queries {
 		id := component.NewIDWithName(metadata.Type, fmt.Sprintf("logs-query-%d: %s", i, query))
 
-		var cache *lru.Cache[string, float64]
+		var cache *lru.Cache[string, int64]
 		var err error
 
 		if query == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
-			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
+			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
 			}
 		}
 		if query == getSQLServerQuerySamplesQuery() {
-			cache, err = lru.New[string, float64](int(cfg.MaxQuerySampleCount * 10))
+			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 10))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue

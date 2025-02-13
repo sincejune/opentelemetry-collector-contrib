@@ -45,12 +45,12 @@ type MetricsConfig struct {
 	SqlserverPageSplitRate                      MetricConfig `mapstructure:"sqlserver.page.split.rate"`
 	SqlserverProcessesBlocked                   MetricConfig `mapstructure:"sqlserver.processes.blocked"`
 	SqlserverQueryExecutionCount                MetricConfig `mapstructure:"sqlserver.query.execution_count"`
+	SqlserverQueryReturnedRows                  MetricConfig `mapstructure:"sqlserver.query.returned_rows"`
 	SqlserverQueryTotalElapsedTime              MetricConfig `mapstructure:"sqlserver.query.total_elapsed_time"`
 	SqlserverQueryTotalGrantKb                  MetricConfig `mapstructure:"sqlserver.query.total_grant_kb"`
 	SqlserverQueryTotalLogicalReads             MetricConfig `mapstructure:"sqlserver.query.total_logical_reads"`
 	SqlserverQueryTotalLogicalWrites            MetricConfig `mapstructure:"sqlserver.query.total_logical_writes"`
 	SqlserverQueryTotalPhysicalReads            MetricConfig `mapstructure:"sqlserver.query.total_physical_reads"`
-	SqlserverQueryTotalRows                     MetricConfig `mapstructure:"sqlserver.query.total_rows"`
 	SqlserverQueryTotalWorkerTime               MetricConfig `mapstructure:"sqlserver.query.total_worker_time"`
 	SqlserverResourcePoolDiskThrottledReadRate  MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.read.rate"`
 	SqlserverResourcePoolDiskThrottledWriteRate MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.write.rate"`
@@ -116,28 +116,28 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: false,
 		},
 		SqlserverQueryExecutionCount: MetricConfig{
-			Enabled: true,
+			Enabled: false,
+		},
+		SqlserverQueryReturnedRows: MetricConfig{
+			Enabled: false,
 		},
 		SqlserverQueryTotalElapsedTime: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalGrantKb: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalLogicalReads: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalLogicalWrites: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalPhysicalReads: MetricConfig{
-			Enabled: true,
-		},
-		SqlserverQueryTotalRows: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverQueryTotalWorkerTime: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SqlserverResourcePoolDiskThrottledReadRate: MetricConfig{
 			Enabled: false,

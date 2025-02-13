@@ -264,68 +264,76 @@ metrics:
     attributes: [database.status]
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.execution_count:
-    enabled: true
-    description: Number of executions of the query
+    enabled: false
+    description: Total number of times the query was executed since the last scrape
     unit: "{executions}"
     sum:
       monotonic: true
-      aggregation_temporality: cumulative
-      value_type: double
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_elapsed_time:
-    enabled: true
-    description: The total time taken by the query
-    unit: "s"
+    enabled: false
+    description: Cumulative execution time across all executions of the query since the last scrape
+    unit: "ms"
     sum:
       monotonic: true
-      aggregation_temporality: cumulative
-      value_type: double
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
-  sqlserver.query.total_rows:
-    enabled: true
-    description: The total rows returned by the query
+  sqlserver.query.returned_rows:
+    enabled: false
+    description: Total number of rows returned by the query since the last scrape
     unit: "{rows}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_worker_time:
-    enabled: true
-    description: The total CPU time taken by the query
-    unit: "s"
+    enabled: false
+    description: The total CPU time taken by the query since the last scrape
+    unit: "ms"
     sum:
       monotonic: true
-      aggregation_temporality: cumulative
-      value_type: double
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_reads:
-    enabled: true
-    description: The total logical reads performed by the query
+    enabled: false
+    description: The total logical reads performed by the query since the last scrape
     unit: "{operations}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_physical_reads:
-    enabled: true
-    description: The total physical reads performed by the query
+    enabled: false
+    description: The total physical reads performed by the query since the last scrape
     unit: "{operations}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_writes:
-    enabled: true
-    description: The total logical writes performed by the query
+    enabled: false
+    description: The total logical writes performed by the query since the last scrape
     unit: "{operations}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_grant_kb:
-    enabled: true
-    description: The total memory granted to the query
+    enabled: false
+    description: The total memory granted to the query since the last scrape
     unit: "kb"
     sum:
       monotonic: true
-      aggregation_temporality: cumulative
-      value_type: double
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
 
 tests:
