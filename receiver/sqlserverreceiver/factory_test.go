@@ -40,7 +40,13 @@ func TestCreateMetrics(t *testing.T) {
 						CollectionInterval: 10 * time.Second,
 						InitialDelay:       time.Second,
 					},
+					LogsConfig: LogsConfig{
+						EnableTopQueryCollection: true,
+					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+					LookbackTime:         uint(2 * 10),
+					MaxQuerySampleCount:  1000,
+					TopQueryCount:        200,
 				}
 
 				require.Equal(t, expectedCfg, factory.CreateDefaultConfig())
