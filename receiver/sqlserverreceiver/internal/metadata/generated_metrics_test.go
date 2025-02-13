@@ -128,6 +128,30 @@ func TestMetricsBuilder(t *testing.T) {
 			mb.RecordSqlserverProcessesBlockedDataPoint(ts, "1")
 
 			allMetricsCount++
+			mb.RecordSqlserverQueryExecutionCountDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryReturnedRowsDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryTotalElapsedTimeDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryTotalGrantKbDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryTotalLogicalReadsDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryTotalLogicalWritesDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryTotalPhysicalReadsDataPoint(ts, 1)
+
+			allMetricsCount++
+			mb.RecordSqlserverQueryTotalWorkerTimeDataPoint(ts, 1)
+
+			allMetricsCount++
 			mb.RecordSqlserverResourcePoolDiskThrottledReadRateDataPoint(ts, "1")
 
 			allMetricsCount++
@@ -173,6 +197,8 @@ func TestMetricsBuilder(t *testing.T) {
 			rb.SetSqlserverComputerName("sqlserver.computer.name-val")
 			rb.SetSqlserverDatabaseName("sqlserver.database.name-val")
 			rb.SetSqlserverInstanceName("sqlserver.instance.name-val")
+			rb.SetSqlserverQueryHash("sqlserver.query.hash-val")
+			rb.SetSqlserverQueryPlanHash("sqlserver.query_plan.hash-val")
 			res := rb.Emit()
 			metrics := mb.Emit(WithResource(res))
 
@@ -431,6 +457,118 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, "The number of processes that are currently blocked", ms.At(i).Description())
 					assert.Equal(t, "{processes}", ms.At(i).Unit())
 					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.execution_count":
+					assert.False(t, validatedMetrics["sqlserver.query.execution_count"], "Found a duplicate in the metrics slice: sqlserver.query.execution_count")
+					validatedMetrics["sqlserver.query.execution_count"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "Total number of times the query was executed since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "{executions}", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.returned_rows":
+					assert.False(t, validatedMetrics["sqlserver.query.returned_rows"], "Found a duplicate in the metrics slice: sqlserver.query.returned_rows")
+					validatedMetrics["sqlserver.query.returned_rows"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "Total number of rows returned by the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "{rows}", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.total_elapsed_time":
+					assert.False(t, validatedMetrics["sqlserver.query.total_elapsed_time"], "Found a duplicate in the metrics slice: sqlserver.query.total_elapsed_time")
+					validatedMetrics["sqlserver.query.total_elapsed_time"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "Cumulative execution time across all executions of the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "ms", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.total_grant_kb":
+					assert.False(t, validatedMetrics["sqlserver.query.total_grant_kb"], "Found a duplicate in the metrics slice: sqlserver.query.total_grant_kb")
+					validatedMetrics["sqlserver.query.total_grant_kb"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "The total memory granted to the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "kb", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.total_logical_reads":
+					assert.False(t, validatedMetrics["sqlserver.query.total_logical_reads"], "Found a duplicate in the metrics slice: sqlserver.query.total_logical_reads")
+					validatedMetrics["sqlserver.query.total_logical_reads"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "The total logical reads performed by the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "{operations}", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.total_logical_writes":
+					assert.False(t, validatedMetrics["sqlserver.query.total_logical_writes"], "Found a duplicate in the metrics slice: sqlserver.query.total_logical_writes")
+					validatedMetrics["sqlserver.query.total_logical_writes"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "The total logical writes performed by the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "{operations}", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.total_physical_reads":
+					assert.False(t, validatedMetrics["sqlserver.query.total_physical_reads"], "Found a duplicate in the metrics slice: sqlserver.query.total_physical_reads")
+					validatedMetrics["sqlserver.query.total_physical_reads"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "The total physical reads performed by the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "{operations}", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+				case "sqlserver.query.total_worker_time":
+					assert.False(t, validatedMetrics["sqlserver.query.total_worker_time"], "Found a duplicate in the metrics slice: sqlserver.query.total_worker_time")
+					validatedMetrics["sqlserver.query.total_worker_time"] = true
+					assert.Equal(t, pmetric.MetricTypeSum, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Sum().DataPoints().Len())
+					assert.Equal(t, "The total CPU time taken by the query since the last scrape", ms.At(i).Description())
+					assert.Equal(t, "ms", ms.At(i).Unit())
+					assert.True(t, ms.At(i).Sum().IsMonotonic())
+					assert.Equal(t, pmetric.AggregationTemporalityDelta, ms.At(i).Sum().AggregationTemporality())
+					dp := ms.At(i).Sum().DataPoints().At(0)
 					assert.Equal(t, start, dp.StartTimestamp())
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
