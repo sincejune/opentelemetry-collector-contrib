@@ -88,7 +88,7 @@ func TestSuccessfulScrape(t *testing.T) {
 		scraper.client = mockClient{
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
-			maxQuerySampleCount: 10000,
+			maxQuerySampleCount: 1000,
 			lookbackTime:        20,
 		}
 
@@ -294,7 +294,7 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	scraper.client = mockClient{
 		instanceName:        scraper.instanceName,
 		SQL:                 scraper.sqlQuery,
-		maxQuerySampleCount: 10000,
+		maxQuerySampleCount: 1000,
 		lookbackTime:        20,
 	}
 
