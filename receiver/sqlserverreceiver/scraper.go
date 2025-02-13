@@ -384,7 +384,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			break
 		}
 
-		// skipping as not cached
 		if totalElapsedTimeDiffs[i] == 0 {
 			continue
 		}
@@ -392,7 +391,6 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
 		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
 
-		// rb := s.mb.NewResourceBuilder()
 		record := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 		record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 
@@ -514,15 +512,15 @@ func obfuscateXMLPlan(rawPlan string) (string, error) {
 
 		switch elem := token.(type) {
 		case xml.StartElement:
-			// Process start element
 			for i := range elem.Attr {
 				for _, attrName := range XMLPlanObfuscationAttrs {
 					if elem.Attr[i].Name.Local == attrName {
+						if elem.Attr[i].Value == "" {
+							continue
+						}
 						val, err := obfuscateSQL(elem.Attr[i].Value)
 						if err != nil {
-							// TODO: fix this, sometimes statement cannot be obfuscated.
 							fmt.Println("Unable to obfuscated sql statement: " + elem.Attr[i].Value)
-							// return "", err
 						}
 						elem.Attr[i].Value = val
 					}
@@ -533,7 +531,6 @@ func obfuscateXMLPlan(rawPlan string) (string, error) {
 				return "", err
 			}
 		case xml.CharData:
-			// Trim whitespace
 			elem = bytes.TrimSpace(elem)
 			err := encoder.EncodeToken(elem)
 			if err != nil {

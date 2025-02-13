@@ -41,11 +41,11 @@ func TestCreateMetrics(t *testing.T) {
 						InitialDelay:       time.Second,
 					},
 					LogsConfig: LogsConfig{
-						EnableQueryTextAndPlan: true,
+						EnableTopQueryCollection: true,
 					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 					LookbackTime:         uint(2 * 10),
-					MaxQuerySampleCount:  10000,
+					MaxQuerySampleCount:  1000,
 					TopQueryCount:        200,
 				}
 

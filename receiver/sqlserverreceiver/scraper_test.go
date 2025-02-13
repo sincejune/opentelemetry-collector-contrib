@@ -263,7 +263,7 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
-	cfg.EnableQueryTextAndPlan = true
+	cfg.EnableTopQueryCollection = true
 
 	scrapers := setupSQLServerLogsScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)

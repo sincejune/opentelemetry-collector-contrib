@@ -39,10 +39,10 @@ func createDefaultConfig() component.Config {
 		ControllerConfig:     cfg,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 		LogsConfig: LogsConfig{
-			EnableQueryTextAndPlan: true,
+			EnableTopQueryCollection: true,
 		},
 		LookbackTime:        uint(2 * cfg.CollectionInterval / time.Second),
-		MaxQuerySampleCount: 10000,
+		MaxQuerySampleCount: 1000,
 		TopQueryCount:       200,
 	}
 }
@@ -76,7 +76,7 @@ func setupQueries(cfg *Config) []string {
 func setupLogQueries(cfg *Config) []string {
 	var queries []string
 
-	if cfg.EnableQueryTextAndPlan {
+	if cfg.EnableTopQueryCollection {
 		queries = append(queries, getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
 
