@@ -6,70 +6,86 @@ resourceMetrics:
             stringValue: sqlserver
     scopeMetrics:
       - metrics:
-          - description: Number of executions of the query
+          - description: Total number of times the query was executed since the last scrape
             name: sqlserver.query.execution_count
             sum:
+              aggregationTemporality: 1
               dataPoints:
-                - asDouble: 5
+                - asInt: "5"
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
+              isMonotonic: true
             unit: '{executions}'
-          - description: The total time taken by the query
-            name: sqlserver.query.total_elapsed_time
+          - description: Total number of rows returned by the query since the last scrape
+            name: sqlserver.query.returned_rows
             sum:
-              dataPoints:
-                - asDouble: 5
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            unit: s
-          - description: The total memory granted to the query
-            name: sqlserver.query.total_grant_kb
-            sum:
-              dataPoints:
-                - asDouble: 2
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            unit: kb
-          - description: The total logical reads performed by the query
-            gauge:
-              dataPoints:
-                - asInt: "2"
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: sqlserver.query.total_logical_reads
-            unit: '{operations}'
-          - description: The total logical writes performed by the query
-            gauge:
-              dataPoints:
-                - asInt: "2"
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: sqlserver.query.total_logical_writes
-            unit: '{operations}'
-          - description: The total physical reads performed by the query
-            gauge:
-              dataPoints:
-                - asInt: "2"
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: sqlserver.query.total_physical_reads
-            unit: '{operations}'
-          - description: The total rows returned by the query
-            gauge:
+              aggregationTemporality: 1
               dataPoints:
                 - asInt: "7"
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: sqlserver.query.total_rows
+              isMonotonic: true
             unit: '{rows}'
-          - description: The total CPU time taken by the query
-            name: sqlserver.query.total_worker_time
+          - description: Cumulative execution time across all executions of the query since the last scrape
+            name: sqlserver.query.total_elapsed_time
             sum:
+              aggregationTemporality: 1
               dataPoints:
-                - asDouble: 10
+                - asInt: "130"
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            unit: s
+              isMonotonic: true
+            unit: ms
+          - description: The total memory granted to the query since the last scrape
+            name: sqlserver.query.total_grant_kb
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: kb
+          - description: The total logical reads performed by the query since the last scrape
+            name: sqlserver.query.total_logical_reads
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: '{operations}'
+          - description: The total logical writes performed by the query since the last scrape
+            name: sqlserver.query.total_logical_writes
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: '{operations}'
+          - description: The total physical reads performed by the query since the last scrape
+            name: sqlserver.query.total_physical_reads
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: '{operations}'
+          - description: The total CPU time taken by the query since the last scrape
+            name: sqlserver.query.total_worker_time
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "130"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: ms
         scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver
           version: latest

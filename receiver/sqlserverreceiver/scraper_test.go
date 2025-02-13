@@ -48,12 +48,12 @@ func enableAllScraperMetrics(cfg *Config, enabled bool) {
 	cfg.MetricsBuilderConfig.Metrics.SqlserverUserConnectionCount.Enabled = enabled
 
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = enabled
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalWrites.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalPhysicalReads.Enabled = enabled
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = enabled
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalWorkerTime.Enabled = enabled
 }
 
@@ -85,7 +85,7 @@ func TestSuccessfulScrape(t *testing.T) {
 
 	enableAllScraperMetrics(cfg, true)
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = false
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = false
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = false
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = false
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = false
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = false
@@ -147,7 +147,7 @@ func TestScrapeQueryMetrics(t *testing.T) {
 
 	enableAllScraperMetrics(cfg, false)
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = true
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = true
@@ -165,13 +165,13 @@ func TestScrapeQueryMetrics(t *testing.T) {
 	queryHash := hex.EncodeToString([]byte("s1"))
 	queryPlanHash := hex.EncodeToString([]byte("s3"))
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "execution_count", 5)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_elapsed_time", 149700)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_elapsed_time", 19)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_grant_kb", 13310)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_reads", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_writes", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_physical_reads", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_rows", 100)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_worker_time", 149650)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_worker_time", 19)
 
 	err := scraper.Start(context.Background(), componenttest.NewNopHost())
 	assert.NoError(t, err)
@@ -212,7 +212,7 @@ func TestScrapeQueryInvalidMetrics(t *testing.T) {
 
 	enableAllScraperMetrics(cfg, false)
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryExecutionCount.Enabled = true
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalElapsedTime.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalGrantKb.Enabled = true
 	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalLogicalReads.Enabled = true
@@ -230,13 +230,13 @@ func TestScrapeQueryInvalidMetrics(t *testing.T) {
 	queryHash := hex.EncodeToString([]byte("s1"))
 	queryPlanHash := hex.EncodeToString([]byte("s3"))
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "execution_count", 5)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_elapsed_time", 149700)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_elapsed_time", 19)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_grant_kb", 13310)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_reads", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_logical_writes", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_physical_reads", 0)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_rows", 100)
-	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_worker_time", 149650)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, "total_worker_time", 19)
 
 	err := scraper.Start(context.Background(), componenttest.NewNopHost())
 	assert.NoError(t, err)
@@ -296,7 +296,7 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
-	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryTotalRows.Enabled = true
+	cfg.MetricsBuilderConfig.Metrics.SqlserverQueryReturnedRows.Enabled = true
 
 	scrapers := setupSQLServerScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
@@ -305,24 +305,24 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	scraper := scrapers[0]
 	cached, val := scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", -1)
 	assert.False(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 1)
 	assert.False(t, cached)
-	assert.Equal(t, 1.0, val)
+	assert.Equal(t, int64(1), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 1)
 	assert.True(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 3)
 	assert.True(t, cached)
-	assert.Equal(t, 2.0, val)
+	assert.Equal(t, int64(2), val)
 
 	scraper.cache = nil
 	cached, val = scraper.cacheAndDiff("query_hash", "query_plan_hash", "column", 2)
 	assert.False(t, cached)
-	assert.Equal(t, 0.0, val)
+	assert.Equal(t, int64(0), val)
 }
 
 func TestSortRows(t *testing.T) {

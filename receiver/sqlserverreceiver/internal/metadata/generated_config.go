@@ -45,12 +45,12 @@ type MetricsConfig struct {
 	SqlserverPageSplitRate                      MetricConfig `mapstructure:"sqlserver.page.split.rate"`
 	SqlserverProcessesBlocked                   MetricConfig `mapstructure:"sqlserver.processes.blocked"`
 	SqlserverQueryExecutionCount                MetricConfig `mapstructure:"sqlserver.query.execution_count"`
+	SqlserverQueryReturnedRows                  MetricConfig `mapstructure:"sqlserver.query.returned_rows"`
 	SqlserverQueryTotalElapsedTime              MetricConfig `mapstructure:"sqlserver.query.total_elapsed_time"`
 	SqlserverQueryTotalGrantKb                  MetricConfig `mapstructure:"sqlserver.query.total_grant_kb"`
 	SqlserverQueryTotalLogicalReads             MetricConfig `mapstructure:"sqlserver.query.total_logical_reads"`
 	SqlserverQueryTotalLogicalWrites            MetricConfig `mapstructure:"sqlserver.query.total_logical_writes"`
 	SqlserverQueryTotalPhysicalReads            MetricConfig `mapstructure:"sqlserver.query.total_physical_reads"`
-	SqlserverQueryTotalRows                     MetricConfig `mapstructure:"sqlserver.query.total_rows"`
 	SqlserverQueryTotalWorkerTime               MetricConfig `mapstructure:"sqlserver.query.total_worker_time"`
 	SqlserverResourcePoolDiskThrottledReadRate  MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.read.rate"`
 	SqlserverResourcePoolDiskThrottledWriteRate MetricConfig `mapstructure:"sqlserver.resource_pool.disk.throttled.write.rate"`
@@ -118,6 +118,9 @@ func DefaultMetricsConfig() MetricsConfig {
 		SqlserverQueryExecutionCount: MetricConfig{
 			Enabled: false,
 		},
+		SqlserverQueryReturnedRows: MetricConfig{
+			Enabled: false,
+		},
 		SqlserverQueryTotalElapsedTime: MetricConfig{
 			Enabled: false,
 		},
@@ -131,9 +134,6 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: false,
 		},
 		SqlserverQueryTotalPhysicalReads: MetricConfig{
-			Enabled: false,
-		},
-		SqlserverQueryTotalRows: MetricConfig{
 			Enabled: false,
 		},
 		SqlserverQueryTotalWorkerTime: MetricConfig{

@@ -926,21 +926,21 @@ type metricSqlserverQueryExecutionCount struct {
 // init fills sqlserver.query.execution_count metric with initial data.
 func (m *metricSqlserverQueryExecutionCount) init() {
 	m.data.SetName("sqlserver.query.execution_count")
-	m.data.SetDescription("Number of executions of the query")
+	m.data.SetDescription("Total number of times the query was executed since the last scrape")
 	m.data.SetUnit("{executions}")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(false)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
-func (m *metricSqlserverQueryExecutionCount) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
+func (m *metricSqlserverQueryExecutionCount) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
 	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
-	dp.SetDoubleValue(val)
+	dp.SetIntValue(val)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -968,6 +968,57 @@ func newMetricSqlserverQueryExecutionCount(cfg MetricConfig) metricSqlserverQuer
 	return m
 }
 
+type metricSqlserverQueryReturnedRows struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills sqlserver.query.returned_rows metric with initial data.
+func (m *metricSqlserverQueryReturnedRows) init() {
+	m.data.SetName("sqlserver.query.returned_rows")
+	m.data.SetDescription("Total number of rows returned by the query since the last scrape")
+	m.data.SetUnit("{rows}")
+	m.data.SetEmptySum()
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+}
+
+func (m *metricSqlserverQueryReturnedRows) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Sum().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSqlserverQueryReturnedRows) updateCapacity() {
+	if m.data.Sum().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Sum().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSqlserverQueryReturnedRows) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Sum().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSqlserverQueryReturnedRows(cfg MetricConfig) metricSqlserverQueryReturnedRows {
+	m := metricSqlserverQueryReturnedRows{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
 type metricSqlserverQueryTotalElapsedTime struct {
 	data     pmetric.Metric // data buffer for generated metric.
 	config   MetricConfig   // metric config provided by user.
@@ -977,21 +1028,21 @@ type metricSqlserverQueryTotalElapsedTime struct {
 // init fills sqlserver.query.total_elapsed_time metric with initial data.
 func (m *metricSqlserverQueryTotalElapsedTime) init() {
 	m.data.SetName("sqlserver.query.total_elapsed_time")
-	m.data.SetDescription("The total time taken by the query")
-	m.data.SetUnit("s")
+	m.data.SetDescription("Cumulative execution time across all executions of the query since the last scrape")
+	m.data.SetUnit("ms")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(false)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
-func (m *metricSqlserverQueryTotalElapsedTime) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
+func (m *metricSqlserverQueryTotalElapsedTime) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
 	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
-	dp.SetDoubleValue(val)
+	dp.SetIntValue(val)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -1028,21 +1079,21 @@ type metricSqlserverQueryTotalGrantKb struct {
 // init fills sqlserver.query.total_grant_kb metric with initial data.
 func (m *metricSqlserverQueryTotalGrantKb) init() {
 	m.data.SetName("sqlserver.query.total_grant_kb")
-	m.data.SetDescription("The total memory granted to the query")
+	m.data.SetDescription("The total memory granted to the query since the last scrape")
 	m.data.SetUnit("kb")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(false)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
-func (m *metricSqlserverQueryTotalGrantKb) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
+func (m *metricSqlserverQueryTotalGrantKb) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
 	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
-	dp.SetDoubleValue(val)
+	dp.SetIntValue(val)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -1079,16 +1130,18 @@ type metricSqlserverQueryTotalLogicalReads struct {
 // init fills sqlserver.query.total_logical_reads metric with initial data.
 func (m *metricSqlserverQueryTotalLogicalReads) init() {
 	m.data.SetName("sqlserver.query.total_logical_reads")
-	m.data.SetDescription("The total logical reads performed by the query")
+	m.data.SetDescription("The total logical reads performed by the query since the last scrape")
 	m.data.SetUnit("{operations}")
-	m.data.SetEmptyGauge()
+	m.data.SetEmptySum()
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
 func (m *metricSqlserverQueryTotalLogicalReads) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
@@ -1096,14 +1149,14 @@ func (m *metricSqlserverQueryTotalLogicalReads) recordDataPoint(start pcommon.Ti
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
 func (m *metricSqlserverQueryTotalLogicalReads) updateCapacity() {
-	if m.data.Gauge().DataPoints().Len() > m.capacity {
-		m.capacity = m.data.Gauge().DataPoints().Len()
+	if m.data.Sum().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Sum().DataPoints().Len()
 	}
 }
 
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricSqlserverQueryTotalLogicalReads) emit(metrics pmetric.MetricSlice) {
-	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+	if m.config.Enabled && m.data.Sum().DataPoints().Len() > 0 {
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
@@ -1128,16 +1181,18 @@ type metricSqlserverQueryTotalLogicalWrites struct {
 // init fills sqlserver.query.total_logical_writes metric with initial data.
 func (m *metricSqlserverQueryTotalLogicalWrites) init() {
 	m.data.SetName("sqlserver.query.total_logical_writes")
-	m.data.SetDescription("The total logical writes performed by the query")
+	m.data.SetDescription("The total logical writes performed by the query since the last scrape")
 	m.data.SetUnit("{operations}")
-	m.data.SetEmptyGauge()
+	m.data.SetEmptySum()
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
 func (m *metricSqlserverQueryTotalLogicalWrites) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
@@ -1145,14 +1200,14 @@ func (m *metricSqlserverQueryTotalLogicalWrites) recordDataPoint(start pcommon.T
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
 func (m *metricSqlserverQueryTotalLogicalWrites) updateCapacity() {
-	if m.data.Gauge().DataPoints().Len() > m.capacity {
-		m.capacity = m.data.Gauge().DataPoints().Len()
+	if m.data.Sum().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Sum().DataPoints().Len()
 	}
 }
 
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricSqlserverQueryTotalLogicalWrites) emit(metrics pmetric.MetricSlice) {
-	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+	if m.config.Enabled && m.data.Sum().DataPoints().Len() > 0 {
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
@@ -1177,16 +1232,18 @@ type metricSqlserverQueryTotalPhysicalReads struct {
 // init fills sqlserver.query.total_physical_reads metric with initial data.
 func (m *metricSqlserverQueryTotalPhysicalReads) init() {
 	m.data.SetName("sqlserver.query.total_physical_reads")
-	m.data.SetDescription("The total physical reads performed by the query")
+	m.data.SetDescription("The total physical reads performed by the query since the last scrape")
 	m.data.SetUnit("{operations}")
-	m.data.SetEmptyGauge()
+	m.data.SetEmptySum()
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
 func (m *metricSqlserverQueryTotalPhysicalReads) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
@@ -1194,14 +1251,14 @@ func (m *metricSqlserverQueryTotalPhysicalReads) recordDataPoint(start pcommon.T
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
 func (m *metricSqlserverQueryTotalPhysicalReads) updateCapacity() {
-	if m.data.Gauge().DataPoints().Len() > m.capacity {
-		m.capacity = m.data.Gauge().DataPoints().Len()
+	if m.data.Sum().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Sum().DataPoints().Len()
 	}
 }
 
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricSqlserverQueryTotalPhysicalReads) emit(metrics pmetric.MetricSlice) {
-	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+	if m.config.Enabled && m.data.Sum().DataPoints().Len() > 0 {
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
@@ -1210,55 +1267,6 @@ func (m *metricSqlserverQueryTotalPhysicalReads) emit(metrics pmetric.MetricSlic
 
 func newMetricSqlserverQueryTotalPhysicalReads(cfg MetricConfig) metricSqlserverQueryTotalPhysicalReads {
 	m := metricSqlserverQueryTotalPhysicalReads{config: cfg}
-	if cfg.Enabled {
-		m.data = pmetric.NewMetric()
-		m.init()
-	}
-	return m
-}
-
-type metricSqlserverQueryTotalRows struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
-}
-
-// init fills sqlserver.query.total_rows metric with initial data.
-func (m *metricSqlserverQueryTotalRows) init() {
-	m.data.SetName("sqlserver.query.total_rows")
-	m.data.SetDescription("The total rows returned by the query")
-	m.data.SetUnit("{rows}")
-	m.data.SetEmptyGauge()
-}
-
-func (m *metricSqlserverQueryTotalRows) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
-	if !m.config.Enabled {
-		return
-	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
-	dp.SetStartTimestamp(start)
-	dp.SetTimestamp(ts)
-	dp.SetIntValue(val)
-}
-
-// updateCapacity saves max length of data point slices that will be used for the slice capacity.
-func (m *metricSqlserverQueryTotalRows) updateCapacity() {
-	if m.data.Gauge().DataPoints().Len() > m.capacity {
-		m.capacity = m.data.Gauge().DataPoints().Len()
-	}
-}
-
-// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
-func (m *metricSqlserverQueryTotalRows) emit(metrics pmetric.MetricSlice) {
-	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
-		m.updateCapacity()
-		m.data.MoveTo(metrics.AppendEmpty())
-		m.init()
-	}
-}
-
-func newMetricSqlserverQueryTotalRows(cfg MetricConfig) metricSqlserverQueryTotalRows {
-	m := metricSqlserverQueryTotalRows{config: cfg}
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -1275,21 +1283,21 @@ type metricSqlserverQueryTotalWorkerTime struct {
 // init fills sqlserver.query.total_worker_time metric with initial data.
 func (m *metricSqlserverQueryTotalWorkerTime) init() {
 	m.data.SetName("sqlserver.query.total_worker_time")
-	m.data.SetDescription("The total CPU time taken by the query")
-	m.data.SetUnit("s")
+	m.data.SetDescription("The total CPU time taken by the query since the last scrape")
+	m.data.SetUnit("ms")
 	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(false)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityUnspecified)
+	m.data.Sum().SetIsMonotonic(true)
+	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 }
 
-func (m *metricSqlserverQueryTotalWorkerTime) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
+func (m *metricSqlserverQueryTotalWorkerTime) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
 	if !m.config.Enabled {
 		return
 	}
 	dp := m.data.Sum().DataPoints().AppendEmpty()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
-	dp.SetDoubleValue(val)
+	dp.SetIntValue(val)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -1887,12 +1895,12 @@ type MetricsBuilder struct {
 	metricSqlserverPageSplitRate                      metricSqlserverPageSplitRate
 	metricSqlserverProcessesBlocked                   metricSqlserverProcessesBlocked
 	metricSqlserverQueryExecutionCount                metricSqlserverQueryExecutionCount
+	metricSqlserverQueryReturnedRows                  metricSqlserverQueryReturnedRows
 	metricSqlserverQueryTotalElapsedTime              metricSqlserverQueryTotalElapsedTime
 	metricSqlserverQueryTotalGrantKb                  metricSqlserverQueryTotalGrantKb
 	metricSqlserverQueryTotalLogicalReads             metricSqlserverQueryTotalLogicalReads
 	metricSqlserverQueryTotalLogicalWrites            metricSqlserverQueryTotalLogicalWrites
 	metricSqlserverQueryTotalPhysicalReads            metricSqlserverQueryTotalPhysicalReads
-	metricSqlserverQueryTotalRows                     metricSqlserverQueryTotalRows
 	metricSqlserverQueryTotalWorkerTime               metricSqlserverQueryTotalWorkerTime
 	metricSqlserverResourcePoolDiskThrottledReadRate  metricSqlserverResourcePoolDiskThrottledReadRate
 	metricSqlserverResourcePoolDiskThrottledWriteRate metricSqlserverResourcePoolDiskThrottledWriteRate
@@ -1947,12 +1955,12 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.Settings, opt
 		metricSqlserverPageSplitRate:                      newMetricSqlserverPageSplitRate(mbc.Metrics.SqlserverPageSplitRate),
 		metricSqlserverProcessesBlocked:                   newMetricSqlserverProcessesBlocked(mbc.Metrics.SqlserverProcessesBlocked),
 		metricSqlserverQueryExecutionCount:                newMetricSqlserverQueryExecutionCount(mbc.Metrics.SqlserverQueryExecutionCount),
+		metricSqlserverQueryReturnedRows:                  newMetricSqlserverQueryReturnedRows(mbc.Metrics.SqlserverQueryReturnedRows),
 		metricSqlserverQueryTotalElapsedTime:              newMetricSqlserverQueryTotalElapsedTime(mbc.Metrics.SqlserverQueryTotalElapsedTime),
 		metricSqlserverQueryTotalGrantKb:                  newMetricSqlserverQueryTotalGrantKb(mbc.Metrics.SqlserverQueryTotalGrantKb),
 		metricSqlserverQueryTotalLogicalReads:             newMetricSqlserverQueryTotalLogicalReads(mbc.Metrics.SqlserverQueryTotalLogicalReads),
 		metricSqlserverQueryTotalLogicalWrites:            newMetricSqlserverQueryTotalLogicalWrites(mbc.Metrics.SqlserverQueryTotalLogicalWrites),
 		metricSqlserverQueryTotalPhysicalReads:            newMetricSqlserverQueryTotalPhysicalReads(mbc.Metrics.SqlserverQueryTotalPhysicalReads),
-		metricSqlserverQueryTotalRows:                     newMetricSqlserverQueryTotalRows(mbc.Metrics.SqlserverQueryTotalRows),
 		metricSqlserverQueryTotalWorkerTime:               newMetricSqlserverQueryTotalWorkerTime(mbc.Metrics.SqlserverQueryTotalWorkerTime),
 		metricSqlserverResourcePoolDiskThrottledReadRate:  newMetricSqlserverResourcePoolDiskThrottledReadRate(mbc.Metrics.SqlserverResourcePoolDiskThrottledReadRate),
 		metricSqlserverResourcePoolDiskThrottledWriteRate: newMetricSqlserverResourcePoolDiskThrottledWriteRate(mbc.Metrics.SqlserverResourcePoolDiskThrottledWriteRate),
@@ -2084,12 +2092,12 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	mb.metricSqlserverPageSplitRate.emit(ils.Metrics())
 	mb.metricSqlserverProcessesBlocked.emit(ils.Metrics())
 	mb.metricSqlserverQueryExecutionCount.emit(ils.Metrics())
+	mb.metricSqlserverQueryReturnedRows.emit(ils.Metrics())
 	mb.metricSqlserverQueryTotalElapsedTime.emit(ils.Metrics())
 	mb.metricSqlserverQueryTotalGrantKb.emit(ils.Metrics())
 	mb.metricSqlserverQueryTotalLogicalReads.emit(ils.Metrics())
 	mb.metricSqlserverQueryTotalLogicalWrites.emit(ils.Metrics())
 	mb.metricSqlserverQueryTotalPhysicalReads.emit(ils.Metrics())
-	mb.metricSqlserverQueryTotalRows.emit(ils.Metrics())
 	mb.metricSqlserverQueryTotalWorkerTime.emit(ils.Metrics())
 	mb.metricSqlserverResourcePoolDiskThrottledReadRate.emit(ils.Metrics())
 	mb.metricSqlserverResourcePoolDiskThrottledWriteRate.emit(ils.Metrics())
@@ -2234,17 +2242,22 @@ func (mb *MetricsBuilder) RecordSqlserverProcessesBlockedDataPoint(ts pcommon.Ti
 }
 
 // RecordSqlserverQueryExecutionCountDataPoint adds a data point to sqlserver.query.execution_count metric.
-func (mb *MetricsBuilder) RecordSqlserverQueryExecutionCountDataPoint(ts pcommon.Timestamp, val float64) {
+func (mb *MetricsBuilder) RecordSqlserverQueryExecutionCountDataPoint(ts pcommon.Timestamp, val int64) {
 	mb.metricSqlserverQueryExecutionCount.recordDataPoint(mb.startTime, ts, val)
 }
 
+// RecordSqlserverQueryReturnedRowsDataPoint adds a data point to sqlserver.query.returned_rows metric.
+func (mb *MetricsBuilder) RecordSqlserverQueryReturnedRowsDataPoint(ts pcommon.Timestamp, val int64) {
+	mb.metricSqlserverQueryReturnedRows.recordDataPoint(mb.startTime, ts, val)
+}
+
 // RecordSqlserverQueryTotalElapsedTimeDataPoint adds a data point to sqlserver.query.total_elapsed_time metric.
-func (mb *MetricsBuilder) RecordSqlserverQueryTotalElapsedTimeDataPoint(ts pcommon.Timestamp, val float64) {
+func (mb *MetricsBuilder) RecordSqlserverQueryTotalElapsedTimeDataPoint(ts pcommon.Timestamp, val int64) {
 	mb.metricSqlserverQueryTotalElapsedTime.recordDataPoint(mb.startTime, ts, val)
 }
 
 // RecordSqlserverQueryTotalGrantKbDataPoint adds a data point to sqlserver.query.total_grant_kb metric.
-func (mb *MetricsBuilder) RecordSqlserverQueryTotalGrantKbDataPoint(ts pcommon.Timestamp, val float64) {
+func (mb *MetricsBuilder) RecordSqlserverQueryTotalGrantKbDataPoint(ts pcommon.Timestamp, val int64) {
 	mb.metricSqlserverQueryTotalGrantKb.recordDataPoint(mb.startTime, ts, val)
 }
 
@@ -2263,13 +2276,8 @@ func (mb *MetricsBuilder) RecordSqlserverQueryTotalPhysicalReadsDataPoint(ts pco
 	mb.metricSqlserverQueryTotalPhysicalReads.recordDataPoint(mb.startTime, ts, val)
 }
 
-// RecordSqlserverQueryTotalRowsDataPoint adds a data point to sqlserver.query.total_rows metric.
-func (mb *MetricsBuilder) RecordSqlserverQueryTotalRowsDataPoint(ts pcommon.Timestamp, val int64) {
-	mb.metricSqlserverQueryTotalRows.recordDataPoint(mb.startTime, ts, val)
-}
-
 // RecordSqlserverQueryTotalWorkerTimeDataPoint adds a data point to sqlserver.query.total_worker_time metric.
-func (mb *MetricsBuilder) RecordSqlserverQueryTotalWorkerTimeDataPoint(ts pcommon.Timestamp, val float64) {
+func (mb *MetricsBuilder) RecordSqlserverQueryTotalWorkerTimeDataPoint(ts pcommon.Timestamp, val int64) {
 	mb.metricSqlserverQueryTotalWorkerTime.recordDataPoint(mb.startTime, ts, val)
 }
 

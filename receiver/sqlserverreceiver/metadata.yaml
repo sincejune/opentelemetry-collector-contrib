@@ -265,59 +265,75 @@ metrics:
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.execution_count:
     enabled: false
-    description: Number of executions of the query
+    description: Total number of times the query was executed since the last scrape
     unit: "{executions}"
     sum:
-      value_type: double
+      monotonic: true
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_elapsed_time:
     enabled: false
-    description: The total time taken by the query
-    unit: "s"
+    description: Cumulative execution time across all executions of the query since the last scrape
+    unit: "ms"
     sum:
-      value_type: double
+      monotonic: true
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
-  sqlserver.query.total_rows:
+  sqlserver.query.returned_rows:
     enabled: false
-    description: The total rows returned by the query
+    description: Total number of rows returned by the query since the last scrape
     unit: "{rows}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_worker_time:
     enabled: false
-    description: The total CPU time taken by the query
-    unit: "s"
+    description: The total CPU time taken by the query since the last scrape
+    unit: "ms"
     sum:
-      value_type: double
+      monotonic: true
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_reads:
     enabled: false
-    description: The total logical reads performed by the query
+    description: The total logical reads performed by the query since the last scrape
     unit: "{operations}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_physical_reads:
     enabled: false
-    description: The total physical reads performed by the query
+    description: The total physical reads performed by the query since the last scrape
     unit: "{operations}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_logical_writes:
     enabled: false
-    description: The total logical writes performed by the query
+    description: The total logical writes performed by the query since the last scrape
     unit: "{operations}"
-    gauge:
+    sum:
+      monotonic: true
+      aggregation_temporality: delta
       value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
   sqlserver.query.total_grant_kb:
     enabled: false
-    description: The total memory granted to the query
+    description: The total memory granted to the query since the last scrape
     unit: "kb"
     sum:
-      value_type: double
+      monotonic: true
+      aggregation_temporality: delta
+      value_type: int
     extended_documentation: This metric is only available when the receiver is configured to directly connect to SQL Server.
 
 tests:
