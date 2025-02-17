@@ -414,7 +414,10 @@ FROM sys.dm_exec_query_stats AS qs
 INNER JOIN sys.dm_exec_query_stats AS stats on qs.plan_handle = stats.plan_handle
 CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) AS qp
 CROSS APPLY sys.dm_exec_sql_text(qs.plan_handle) AS st
-WHERE qs.plan_handle = 0x%s;
+WHERE qs.query_hash = 0x%s
+AND qs.query_plan_hash = 0x%s
+AND qs.plan_handle = 0x%s
+;
 `
 
 const sqlServerQueryTextAndPlan = `
@@ -453,8 +456,8 @@ CROSS APPLY sys.dm_exec_query_plan(qs.query_plan_handle) AS qp
 CROSS APPLY sys.dm_exec_sql_text(qs.query_plan_handle) AS st;
 `
 
-func sqlForQueryTextAndQueryPlan(queryPlanHandle string) string {
-	return fmt.Sprintf(_sqlForQueryTextAndQueryPlan, queryPlanHandle)
+func sqlForQueryTextAndQueryPlan(queryHash string, queryPlanHash string, queryPlanHandle string) string {
+	return fmt.Sprintf(_sqlForQueryTextAndQueryPlan, queryHash, queryPlanHash, queryPlanHandle)
 }
 
 func sqlForTopQueries(instanceName string, maxQuerySampleCount uint, lookbackTime uint) string {

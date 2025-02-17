@@ -525,12 +525,25 @@ func (s *sqlServerScraperHelper) getTopNQueriesByElapsedTimeDiff(rows []sqlquery
 		return totalElapsedTimeDiffs[i] > totalElapsedTimeDiffs[j]
 	})
 
-	return rows[:topQueryCount], totalElapsedTimeDiffs[:topQueryCount]
+	resultLen := uint(len(rows))
+	if topQueryCount < resultLen {
+		resultLen = topQueryCount
+	}
+
+	return rows[:resultLen], totalElapsedTimeDiffs[:resultLen]
 }
 
 func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Context, rows []sqlquery.StringMap, elapsedTimeDiffs []int64) (plog.Logs, error) {
 	var wg sync.WaitGroup
 	errorsChan := make(chan error)
+	errs := make([]error, 1024)
+
+	go func() {
+		for err := range errorsChan {
+			errs = append(errs, err)
+		}
+	}()
+
 	logs := plog.NewLogs()
 	logRecords := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords()
 	const totalElapsedTime = "total_elapsed_time"
@@ -543,6 +556,7 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 	const physicalReads = "total_physical_reads"
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
+	const queryPlanHandle = "query_plan_handle"
 	for i, row := range rows {
 		if elapsedTimeDiffs[i] == 0 {
 			continue
@@ -552,10 +566,15 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 
 		go func(record plog.LogRecord, row sqlquery.StringMap, elapsedTimeDiff int64) {
 			defer wg.Done()
-			result, err := s.client.ExecuteQuery(ctx, sqlForQueryTextAndQueryPlan(row[queryPlanHash]))
+			textAndQueryPlanQuery := sqlForQueryTextAndQueryPlan(hex.EncodeToString([]byte(row[queryHash])), hex.EncodeToString([]byte(row[queryPlanHash])), hex.EncodeToString([]byte(row[queryPlanHandle])))
+			textAndQueryPlanResult, err := s.client.ExecuteQuery(ctx, textAndQueryPlanQuery)
 			if err != nil {
 				errorsChan <- err
 				return
+			}
+
+			if len(textAndQueryPlanResult) != 1 {
+				s.logger.Info(fmt.Sprintf("retrieved %d results for text and query plan. query = %s", textAndQueryPlanQuery))
 			}
 
 			queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
@@ -635,7 +654,7 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 				}
 			}
 
-			obfuscatedSQL, err := obfuscateSQL(result[0]["text"])
+			obfuscatedSQL, err := obfuscateSQL(textAndQueryPlanResult[0]["text"])
 			if err != nil {
 				s.logger.Error("failed to obfuscate query text", zap.Error(err))
 				errorsChan <- err
@@ -643,7 +662,7 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 			record.Attributes().PutStr("query_text", obfuscatedSQL)
 
 			// obfuscate query plan
-			obfuscatedQueryPlan, err := obfuscateXMLPlan(result[0]["query_plan"])
+			obfuscatedQueryPlan, err := obfuscateXMLPlan(textAndQueryPlanResult[0]["query_plan"])
 			if err != nil {
 				s.logger.Error("failed to obfuscate query plan", zap.Error(err))
 				errorsChan <- err
@@ -653,10 +672,8 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 	}
 	wg.Wait()
 	close(errorsChan)
-	errs := make([]error, 0)
-	for err := range errorsChan {
-		errs = append(errs, err)
-	}
+	<-errorsChan
+
 	return logs, errors.Join(errs...)
 }
 
