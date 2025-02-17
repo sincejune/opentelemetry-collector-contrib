@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -128,9 +129,16 @@ func (s *sqlServerScraperHelper) ScrapeMetrics(ctx context.Context) (pmetric.Met
 
 func (s *sqlServerScraperHelper) ScrapeLogs(ctx context.Context) (plog.Logs, error) {
 	switch s.sqlQuery {
-	case getSQLServerQueryTextAndPlanQuery(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
+	case sqlForTopQueries(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
 		// TODO: Add a logs builder for that
-		return s.recordDatabaseQueryTextAndPlan(ctx, s.topQueryCount)
+		rows, err := s.retrieveTopQueryFromAllTime(ctx)
+		if err != nil {
+			return plog.Logs{}, err
+		}
+
+		rows, elapsedTimeDiffs := s.getTopNQueriesByElapsedTimeDiff(rows, s.topQueryCount)
+		return s.recordNTopQueryWithTextAndPlan(ctx, rows, elapsedTimeDiffs)
+		// return s.recordDatabaseQueryTextAndPlan(ctx, s.topQueryCount)
 	case getSQLServerQuerySamplesQuery():
 		return s.recordDatabaseSampleQuery(ctx)
 	default:
@@ -477,6 +485,179 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 		s.mb.EmitForResource(metadata.WithResource(rb.Emit()))
 	}
 	return errors.Join(errs...)
+}
+
+func (s *sqlServerScraperHelper) retrieveTopQueryFromAllTime(ctx context.Context) ([]sqlquery.StringMap, error) {
+	rows, err := s.client.QueryRows(ctx)
+	if err != nil {
+		if errors.Is(err, sqlquery.ErrNullValueWarning) {
+			s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
+		} else {
+			return nil, fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
+		}
+	}
+	return rows, nil
+}
+
+func (s *sqlServerScraperHelper) getTopNQueriesByElapsedTimeDiff(rows []sqlquery.StringMap, topQueryCount uint) ([]sqlquery.StringMap, []int64) {
+	totalElapsedTimeDiffs := make([]int64, len(rows))
+	const queryHash = "query_hash"
+	const queryPlanHash = "query_plan_hash"
+	const totalElapsedTime = "total_elapsed_time"
+
+	for i, row := range rows {
+		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
+		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
+
+		elapsedTime, err := strconv.ParseInt(row[totalElapsedTime], 10, 64)
+		if err != nil {
+			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting logs rows: %s", err))
+		} else {
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalElapsedTime, elapsedTime/1000); cached && diff > 0 {
+				totalElapsedTimeDiffs[i] = diff
+			}
+		}
+	}
+
+	rows = sortRows(rows, totalElapsedTimeDiffs)
+
+	sort.Slice(totalElapsedTimeDiffs, func(i, j int) bool {
+		return totalElapsedTimeDiffs[i] > totalElapsedTimeDiffs[j]
+	})
+
+	return rows[:topQueryCount], totalElapsedTimeDiffs[:topQueryCount]
+}
+
+func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Context, rows []sqlquery.StringMap, elapsedTimeDiffs []int64) (plog.Logs, error) {
+	var wg sync.WaitGroup
+	errorsChan := make(chan error)
+	logs := plog.NewLogs()
+	logRecords := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords()
+	const totalElapsedTime = "total_elapsed_time"
+	const rowsReturned = "total_rows"
+	const totalWorkerTime = "total_worker_time"
+	const queryHash = "query_hash"
+	const queryPlanHash = "query_plan_hash"
+	const logicalReads = "total_logical_reads"
+	const logicalWrites = "total_logical_writes"
+	const physicalReads = "total_physical_reads"
+	const executionCount = "execution_count"
+	const totalGrant = "total_grant_kb"
+	for i, row := range rows {
+		if elapsedTimeDiffs[i] == 0 {
+			continue
+		}
+		wg.Add(1)
+		record := logRecords.AppendEmpty()
+
+		go func(record plog.LogRecord, row sqlquery.StringMap, elapsedTimeDiff int64) {
+			defer wg.Done()
+			result, err := s.client.ExecuteQuery(ctx, sqlForQueryTextAndQueryPlan(row[queryPlanHash]))
+			if err != nil {
+				errorsChan <- err
+				return
+			}
+
+			queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
+			queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
+
+			record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+
+			record.Attributes().PutStr(computerNameKey, row[computerNameKey])
+			record.Attributes().PutStr(instanceNameKey, row[instanceNameKey])
+			record.Attributes().PutStr(queryHash, queryHashVal)
+			record.Attributes().PutStr(queryPlanHash, queryPlanHashVal)
+
+			s.logger.Debug(fmt.Sprintf("DataRow: %v, PlanHash: %v, Hash: %v", row, queryPlanHashVal, queryHashVal))
+
+			record.Attributes().PutDouble(totalElapsedTime, float64(elapsedTimeDiff))
+
+			rowsReturnVal, err := strconv.ParseInt(row[rowsReturned], 10, 64)
+			if err != nil {
+				err = fmt.Errorf("row %d: %w", i, err)
+				errorsChan <- err
+			}
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, rowsReturned, rowsReturnVal); cached && diff > 0 {
+				record.Attributes().PutInt(rowsReturned, diff)
+			}
+
+			logicalReadsVal, err := strconv.ParseInt(row[logicalReads], 10, 64)
+			if err != nil {
+				err = fmt.Errorf("row %d: %w", i, err)
+				errorsChan <- err
+			}
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalReads, logicalReadsVal); cached && diff > 0 {
+				record.Attributes().PutInt(logicalReads, diff)
+			}
+
+			logicalWritesVal, err := strconv.ParseInt(row[logicalWrites], 10, 64)
+			if err != nil {
+				err = fmt.Errorf("row %d: %w", i, err)
+				errorsChan <- err
+			}
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalWrites, logicalWritesVal); cached && diff > 0 {
+				record.Attributes().PutInt(logicalWrites, diff)
+			}
+
+			physicalReadsVal, err := strconv.ParseInt(row[physicalReads], 10, 64)
+			if err != nil {
+				err = fmt.Errorf("row %d: %w", i, err)
+				errorsChan <- err
+			}
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, physicalReads, physicalReadsVal); cached && diff > 0 {
+				record.Attributes().PutInt(physicalReads, diff)
+			}
+
+			totalExecutionCount, err := strconv.ParseInt(row[executionCount], 10, 64)
+			if err != nil {
+				s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting metric rows: %s", err))
+			} else {
+				if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached && diff > 0 {
+					record.Attributes().PutInt(executionCount, diff)
+				}
+			}
+
+			workerTime, err := strconv.ParseInt(row[totalWorkerTime], 10, 64)
+			if err != nil {
+				s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed parsing metric total_worker_time: %s", err))
+			} else {
+				if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalWorkerTime, workerTime/1000); cached && diff > 0 {
+					record.Attributes().PutInt(totalWorkerTime, diff)
+				}
+			}
+
+			memoryGranted, err := strconv.ParseInt(row[totalGrant], 10, 64)
+			if err != nil {
+				s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed parsing metric total_grant_kb: %s", err))
+			} else {
+				if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalGrant, memoryGranted); cached && diff > 0 {
+					record.Attributes().PutInt(totalGrant, diff)
+				}
+			}
+
+			obfuscatedSQL, err := obfuscateSQL(result[0]["text"])
+			if err != nil {
+				s.logger.Error("failed to obfuscate query text", zap.Error(err))
+				errorsChan <- err
+			}
+			record.Attributes().PutStr("query_text", obfuscatedSQL)
+
+			// obfuscate query plan
+			obfuscatedQueryPlan, err := obfuscateXMLPlan(result[0]["query_plan"])
+			if err != nil {
+				s.logger.Error("failed to obfuscate query plan", zap.Error(err))
+				errorsChan <- err
+			}
+			record.Attributes().PutStr("normalized_query_plan", obfuscatedQueryPlan)
+		}(record, row, elapsedTimeDiffs[i])
+	}
+	wg.Wait()
+	close(errorsChan)
+	errs := make([]error, 0)
+	for err := range errorsChan {
+		errs = append(errs, err)
+	}
+	return logs, errors.Join(errs...)
 }
 
 func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Context, topQueryCount uint) (plog.Logs, error) {
