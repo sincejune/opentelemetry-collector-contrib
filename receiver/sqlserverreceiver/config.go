@@ -14,7 +14,7 @@ import (
 
 type LogsConfig struct {
 	EnableTopQueryCollection bool `mapstructure:"enable_top_query_collection"`
-	EnableQuerySample      bool `mapstructure:"enable_query_sample"`
+	EnableQuerySample        bool `mapstructure:"enable_query_sample"`
 }
 
 // Config defines configuration for a sqlserver receiver.

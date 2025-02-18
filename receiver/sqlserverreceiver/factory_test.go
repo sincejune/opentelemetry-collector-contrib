@@ -42,7 +42,7 @@ func TestFactory(t *testing.T) {
 					},
 					LogsConfig: LogsConfig{
 						EnableTopQueryCollection: false,
-						EnableQuerySample:      true,
+						EnableQuerySample:        false,
 					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 					LookbackTime:         uint(2 * 10),

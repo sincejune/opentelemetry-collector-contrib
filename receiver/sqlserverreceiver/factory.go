@@ -40,7 +40,7 @@ func createDefaultConfig() component.Config {
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 		LogsConfig: LogsConfig{
 			EnableTopQueryCollection: false,
-			EnableQuerySample:      false,
+			EnableQuerySample:        false,
 		},
 		LookbackTime:        uint(2 * cfg.CollectionInterval / time.Second),
 		MaxQuerySampleCount: 1000,
