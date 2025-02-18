@@ -256,11 +256,15 @@ func readFile(fname string) ([]sqlquery.StringMap, error) {
 	return metrics, nil
 }
 
-func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, error) {
+func (mc mockClient) QueryRows(ctx context.Context, args ...any) ([]sqlquery.StringMap, error) {
+	return mc.ExecuteQuery(ctx, mc.SQL)
+}
+
+func (mc mockClient) ExecuteQuery(ctx context.Context, query string, args ...any) ([]sqlquery.StringMap, error) {
 	var queryResults []sqlquery.StringMap
 	var err error
 
-	switch mc.SQL {
+	switch query {
 	case getSQLServerDatabaseIOQuery(mc.instanceName):
 		queryResults, err = readFile("database_io_scraped_data.txt")
 	case getSQLServerPerformanceCounterQuery(mc.instanceName):
@@ -269,8 +273,10 @@ func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, e
 		queryResults, err = readFile("propertyQueryData.txt")
 	case getSQLServerQueryMetricsQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryMetricsQueryData.txt")
-	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
-		queryResults, err = readFile("queryTextAndPlanQueryData.txt")
+	case sqlForTopQueries(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
+		queryResults, err = readFile("queryTopQueries.txt")
+	case sqlForQueryTextAndQueryPlan("0x37849E874171E3F3", "0xD3112909429A1B50", "0x06000100E2B3C02AA042A7001000000001000000000000000000000000000000000000000000000000000000"):
+		queryResults, err = readFile("queryTextAndPlan.txt")
 	default:
 		return nil, errors.New("No valid query found")
 	}
@@ -400,7 +406,6 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	}
 
 	actualLogs, err := scraper.ScrapeLogs(context.Background())
-	// golden.WriteLogs(t, filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"), actualLogs)
 	assert.NoError(t, err)
 	expectedLogs, _ := golden.ReadLogs(filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"))
 	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())

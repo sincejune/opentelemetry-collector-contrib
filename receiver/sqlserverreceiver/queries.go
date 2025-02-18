@@ -385,9 +385,9 @@ const _sqlForTopQueries = `
 SELECT TOP(@topNValue)
 REPLACE(@@SERVERNAME,'\',':') AS [sql_instance],
 HOST_NAME() AS [computer_name],
-MAX(qs.plan_handle) AS query_plan_handle,
-qs.query_hash AS query_hash,
-qs.query_plan_hash AS query_plan_hash,
+CONVERT(VARCHAR(1000), MAX(qs.plan_handle), 2) AS query_plan_handle,
+CONVERT(VARCHAR(1000), qs.query_hash, 2) AS query_hash,
+CONVERT(VARCHAR(1000), qs.query_plan_hash, 2) AS query_plan_hash,
 SUM(qs.execution_count) AS execution_count,
 SUM(qs.total_elapsed_time) AS total_elapsed_time,
 SUM(qs.total_worker_time) AS total_worker_time,
