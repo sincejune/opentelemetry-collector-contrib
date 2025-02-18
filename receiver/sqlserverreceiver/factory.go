@@ -39,11 +39,11 @@ func createDefaultConfig() component.Config {
 		ControllerConfig:     cfg,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 		LogsConfig: LogsConfig{
-			EnableQueryTextAndPlan: true,
-			EnableQuerySample:      true,
+			EnableTopQueryCollection: false,
+			EnableQuerySample:      false,
 		},
 		LookbackTime:        uint(2 * cfg.CollectionInterval / time.Second),
-		MaxQuerySampleCount: 10000,
+		MaxQuerySampleCount: 1000,
 		TopQueryCount:       200,
 	}
 }
@@ -87,7 +87,7 @@ func setupQueries(cfg *Config) []string {
 func setupLogQueries(cfg *Config) []string {
 	var queries []string
 
-	if cfg.EnableQueryTextAndPlan {
+	if cfg.EnableTopQueryCollection {
 		queries = append(queries, getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
 	if cfg.EnableQuerySample {
@@ -169,7 +169,7 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 
 	queries := setupLogQueries(cfg)
 	if len(queries) == 0 {
-		params.Logger.Info("No direct connection will be made to the SQL Server: No metrics are enabled requiring it.")
+		params.Logger.Info("No direct connection will be made to the SQL Server: No logs are enabled requiring it.")
 		return nil
 	}
 
@@ -187,7 +187,8 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 		var err error
 
 		if query == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
-			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 10))
+			// we have 8 metrics in this query and multiple 2 to allow to cache more queries.
+			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 8 * 2))
 			if err != nil {
 				params.Logger.Error("Failed to create LRU cache, skipping the current scraper", zap.Error(err))
 				continue
@@ -208,7 +209,7 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 			sqlquery.TelemetryConfig{},
 			dbProviderFunc,
 			sqlquery.NewDbClient,
-			metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, params),
+			nil,
 			cfg.MaxQuerySampleCount,
 			cfg.LookbackTime,
 			cfg.TopQueryCount,

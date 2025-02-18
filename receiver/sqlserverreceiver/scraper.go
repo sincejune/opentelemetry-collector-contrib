@@ -4,16 +4,13 @@
 package sqlserverreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver"
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -481,6 +478,7 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryMetrics(ctx context.Context,
 
 func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Context, topQueryCount uint) (plog.Logs, error) {
 	// Constants are the column names of the database status
+	const DBPrefix = "db."
 	const totalElapsedTime = "total_elapsed_time"
 	const rowsReturned = "total_rows"
 	const totalWorkerTime = "total_worker_time"
@@ -491,12 +489,14 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 	const physicalReads = "total_physical_reads"
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
+	const queryText = "query_text"
+	const queryPlan = "query_plan"
 	rows, err := s.client.QueryRows(ctx)
 	if err != nil {
 		if errors.Is(err, sqlquery.ErrNullValueWarning) {
 			s.logger.Warn("problems encountered getting metric rows", zap.Error(err))
 		} else {
-			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting metric rows: %w", err)
+			return plog.Logs{}, fmt.Errorf("sqlServerScraperHelper failed getting rows: %w", err)
 		}
 	}
 	var errs []error
@@ -509,125 +509,143 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 
 		elapsedTime, err := strconv.ParseInt(row[totalElapsedTime], 10, 64)
 		if err != nil {
-			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting logs rows: %s", err))
+			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting rows: %s", err))
+			errs = append(errs, err)
 		} else {
+			// we're trying to get the queries that used the most time.
+			// caching the total elapsed time (in millisecond) and compare in the next scrape.
 			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalElapsedTime, elapsedTime/1000); cached && diff > 0 {
 				totalElapsedTimeDiffs[i] = diff
 			}
 		}
 	}
 
+	// sort the rows based on the totalElapsedTimeDiffs in descending order
 	rows = sortRows(rows, totalElapsedTimeDiffs)
 
-	sort.Slice(totalElapsedTimeDiffs, func(i, j int) bool {
-		return totalElapsedTimeDiffs[i] > totalElapsedTimeDiffs[j]
-	})
+	// sort the totalElapsedTimeDiffs in descending order as well
+	sort.Slice(totalElapsedTimeDiffs, func(i, j int) bool { return totalElapsedTimeDiffs[i] > totalElapsedTimeDiffs[j] })
 
 	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
+	resourceLog.Resource().Attributes().PutStr("db.system.type", "microsoft.sql_server")
 
+	scopedLog := resourceLog.ScopeLogs().AppendEmpty()
+	scopedLog.Scope().SetName("github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver")
+	scopedLog.Scope().SetVersion("development")
+
+	timestamp := pcommon.NewTimestampFromTime(time.Now())
 	for i, row := range rows {
-		if i >= int(topQueryCount) {
-			break
-		}
-
-		// skipping as not cached
-		if totalElapsedTimeDiffs[i] == 0 {
+		// we skip the query if we already export enough queries in this run.
+		if i > int(topQueryCount) {
 			continue
 		}
 
+		// reporting human-readable query hash and query hash plan
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
 		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
 
-		// rb := s.mb.NewResourceBuilder()
-		record := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
-		record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+		record := scopedLog.LogRecords().AppendEmpty()
+		record.SetTimestamp(timestamp)
 
 		record.Attributes().PutStr(computerNameKey, row[computerNameKey])
 		record.Attributes().PutStr(instanceNameKey, row[instanceNameKey])
-		record.Attributes().PutStr(queryHash, queryHashVal)
-		record.Attributes().PutStr(queryPlanHash, queryPlanHashVal)
 
-		s.logger.Debug(fmt.Sprintf("DataRow: %v, PlanHash: %v, Hash: %v", row, queryPlanHashVal, queryHashVal))
+		record.Attributes().PutStr(DBPrefix+queryHash, queryHashVal)
+		record.Attributes().PutStr(DBPrefix+queryPlanHash, queryPlanHashVal)
 
-		record.Attributes().PutDouble(totalElapsedTime, float64(totalElapsedTimeDiffs[i]))
+		s.logger.Debug(fmt.Sprintf("QueryHash: %v, PlanHash: %v, DataRow: %v", queryHashVal, queryPlanHashVal, row))
 
+		record.Attributes().PutInt(DBPrefix+totalElapsedTime, totalElapsedTimeDiffs[i])
+
+		// handling `total_rows`
 		rowsReturnVal, err := strconv.ParseInt(row[rowsReturned], 10, 64)
 		if err != nil {
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, rowsReturned, rowsReturnVal); cached && diff > 0 {
-			record.Attributes().PutInt(rowsReturned, diff)
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, rowsReturned, rowsReturnVal); cached {
+			record.Attributes().PutInt(DBPrefix+rowsReturned, diff)
 		}
 
+		// handling `total_logical_reads`
 		logicalReadsVal, err := strconv.ParseInt(row[logicalReads], 10, 64)
 		if err != nil {
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalReads, logicalReadsVal); cached && diff > 0 {
-			record.Attributes().PutInt(logicalReads, diff)
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalReads, logicalReadsVal); cached {
+			record.Attributes().PutInt(DBPrefix+logicalReads, diff)
 		}
 
+		// handling `total_logical_writes`
 		logicalWritesVal, err := strconv.ParseInt(row[logicalWrites], 10, 64)
 		if err != nil {
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalWrites, logicalWritesVal); cached && diff > 0 {
-			record.Attributes().PutInt(logicalWrites, diff)
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, logicalWrites, logicalWritesVal); cached {
+			record.Attributes().PutInt(DBPrefix+logicalWrites, diff)
 		}
 
+		// handling `physical_reads`
 		physicalReadsVal, err := strconv.ParseInt(row[physicalReads], 10, 64)
 		if err != nil {
 			err = fmt.Errorf("row %d: %w", i, err)
 			errs = append(errs, err)
 		}
-		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, physicalReads, physicalReadsVal); cached && diff > 0 {
-			record.Attributes().PutInt(physicalReads, diff)
+		if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, physicalReads, physicalReadsVal); cached {
+			record.Attributes().PutInt(DBPrefix+physicalReads, diff)
 		}
 
+		// handling `execution_count`
 		totalExecutionCount, err := strconv.ParseInt(row[executionCount], 10, 64)
 		if err != nil {
-			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed getting metric rows: %s", err))
+			err = fmt.Errorf("row %d: %w", i, err)
+			errs = append(errs, err)
 		} else {
-			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached && diff > 0 {
-				record.Attributes().PutInt(executionCount, diff)
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, executionCount, totalExecutionCount); cached {
+				record.Attributes().PutInt(DBPrefix+executionCount, diff)
 			}
 		}
 
+		// handle `total_worker_time`, storing milliseconds
 		workerTime, err := strconv.ParseInt(row[totalWorkerTime], 10, 64)
 		if err != nil {
-			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed parsing metric total_worker_time: %s", err))
+			err = fmt.Errorf("row %d: %w", i, err)
+			errs = append(errs, err)
 		} else {
-			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalWorkerTime, workerTime/1000); cached && diff > 0 {
-				record.Attributes().PutInt(totalWorkerTime, diff)
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalWorkerTime, workerTime/1000); cached {
+				record.Attributes().PutInt(DBPrefix+totalWorkerTime, diff)
 			}
 		}
 
+		// handle `total_grant_kb`
 		memoryGranted, err := strconv.ParseInt(row[totalGrant], 10, 64)
 		if err != nil {
-			s.logger.Info(fmt.Sprintf("sqlServerScraperHelper failed parsing metric total_grant_kb: %s", err))
+			err = fmt.Errorf("row %d: %w", i, err)
+			errs = append(errs, err)
 		} else {
-			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalGrant, memoryGranted); cached && diff > 0 {
-				record.Attributes().PutInt(totalGrant, diff)
+			if cached, diff := s.cacheAndDiff(queryHashVal, queryPlanHashVal, totalGrant, memoryGranted); cached {
+				record.Attributes().PutInt(DBPrefix+totalGrant, diff)
 			}
 		}
 
-		obfuscatedSQL, err := obfuscateSQL(row["text"])
+		// handling `query_text`
+		obfuscatedSQL, err := obfuscateSQL(row[queryText])
 		if err != nil {
 			s.logger.Error("failed to obfuscate query text", zap.Error(err))
 			errs = append(errs, err)
 		}
-		record.Attributes().PutStr("query_text", obfuscatedSQL)
+		record.Attributes().PutStr(DBPrefix+queryText, obfuscatedSQL)
 
-		// obfuscate query plan
-		obfuscatedQueryPlan, err := obfuscateXMLPlan(row["query_plan"])
+		// handling `query_plan`
+		obfuscatedQueryPlan, err := obfuscateXMLPlan(row[queryPlan])
 		if err != nil {
 			s.logger.Error("failed to obfuscate query plan", zap.Error(err))
 			errs = append(errs, err)
 		}
-		record.Attributes().PutStr("normalized_query_plan", obfuscatedQueryPlan)
+		record.Attributes().PutStr(DBPrefix+queryPlan, obfuscatedQueryPlan)
 	}
 
 	return logs, errors.Join(errs...)
@@ -820,75 +838,9 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 	return logs, errors.Join(errs...)
 }
 
-var XMLPlanObfuscationAttrs = []string{
-	"StatementText",
-	"ConstValue",
-	"ScalarString",
-	"ParameterCompiledValue",
-}
-
-// obfuscateXMLPlan obfuscates SQL text & parameters from the provided SQL Server XML Plan
-func obfuscateXMLPlan(rawPlan string) (string, error) {
-	decoder := xml.NewDecoder(strings.NewReader(rawPlan))
-	var buffer bytes.Buffer
-	encoder := xml.NewEncoder(&buffer)
-
-	for {
-		token, err := decoder.Token()
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			return "", err
-		}
-
-		switch elem := token.(type) {
-		case xml.StartElement:
-			// Process start element
-			for i := range elem.Attr {
-				for _, attrName := range XMLPlanObfuscationAttrs {
-					if elem.Attr[i].Name.Local == attrName {
-						val, err := obfuscateSQL(elem.Attr[i].Value)
-						if err != nil {
-							// TODO: fix this, sometimes statement cannot be obfuscated.
-							fmt.Println("Unable to obfuscated sql statement: " + elem.Attr[i].Value)
-							// return "", err
-						}
-						elem.Attr[i].Value = val
-					}
-				}
-			}
-			err := encoder.EncodeToken(elem)
-			if err != nil {
-				return "", err
-			}
-		case xml.CharData:
-			// Trim whitespace
-			elem = bytes.TrimSpace(elem)
-			err := encoder.EncodeToken(elem)
-			if err != nil {
-				return "", err
-			}
-		case xml.EndElement:
-			err := encoder.EncodeToken(elem)
-			if err != nil {
-				return "", err
-			}
-		default:
-			err := encoder.EncodeToken(token)
-			if err != nil {
-				return "", err
-			}
-		}
-	}
-
-	err := encoder.Flush()
-	if err != nil {
-		return "", err
-	}
-	return buffer.String(), nil
-}
-
+// cacheAndDiff store row(in int) with query hash and query plan hash variables
+// (1) returns true if the key is cached before
+// (2) returns positive value if the value is larger than the cached value
 func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash string, column string, val int64) (bool, int64) {
 	if s.cache == nil {
 		s.logger.Error("LRU cache is not successfully initialized, skipping caching and diffing")
@@ -915,8 +867,9 @@ func (s *sqlServerScraperHelper) cacheAndDiff(queryHash string, queryPlanHash st
 	return true, 0
 }
 
-// sortRows sorts the rows based on the values slice in descending order
-// It returns a new slice of rows sorted according to the values.
+// sortRows sorts the rows based on the `values` slice in descending order
+// Input: (row: [row1, row2, row3], values: [100, 10, 1000]
+// Expected Output: (row: [row3, row1, row2]
 func sortRows(rows []sqlquery.StringMap, values []int64) []sqlquery.StringMap {
 	// Create an index slice to track the original indices of rows
 	indices := make([]int, len(values))

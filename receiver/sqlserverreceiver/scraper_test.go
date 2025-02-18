@@ -106,7 +106,7 @@ func TestSuccessfulScrape(t *testing.T) {
 		scraper.client = mockClient{
 			instanceName:        scraper.instanceName,
 			SQL:                 scraper.sqlQuery,
-			maxQuerySampleCount: 10000,
+			maxQuerySampleCount: 1000,
 			lookbackTime:        20,
 		}
 
@@ -175,7 +175,7 @@ func TestScrapeCacheAndDiff(t *testing.T) {
 	cfg.Port = 1433
 	cfg.Server = "0.0.0.0"
 	cfg.MetricsBuilderConfig.ResourceAttributes.SqlserverInstanceName.Enabled = true
-
+	cfg.EnableTopQueryCollection = true
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
@@ -241,6 +241,10 @@ type mockClient struct {
 	lookbackTime        uint
 }
 
+type mockInvalidClient struct {
+	mockClient
+}
+
 func readFile(fname string) ([]sqlquery.StringMap, error) {
 	file, err := os.ReadFile(filepath.Join("testdata", fname))
 	if err != nil {
@@ -271,6 +275,23 @@ func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, e
 		queryResults, err = readFile("queryMetricsQueryData.txt")
 	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryTextAndPlanQueryData.txt")
+	default:
+		return nil, errors.New("No valid query found")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return queryResults, nil
+}
+
+func (mc mockInvalidClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, error) {
+	var queryResults []sqlquery.StringMap
+	var err error
+
+	switch mc.SQL {
+	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
+		queryResults, err = readFile("queryTextAndPlanQueryInvalidData.txt")
 	default:
 		return nil, errors.New("No valid query found")
 	}
@@ -361,10 +382,11 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	cfg.Port = 1433
 	cfg.Server = "0.0.0.0"
 	cfg.MetricsBuilderConfig.ResourceAttributes.SqlserverInstanceName.Enabled = true
+	cfg.EnableTopQueryCollection = true
 	assert.NoError(t, cfg.Validate())
 
 	enableAllScraperMetrics(cfg, false)
-	cfg.EnableQueryTextAndPlan = true
+	cfg.EnableTopQueryCollection = true
 
 	scrapers := setupSQLServerLogsScrapers(receivertest.NewNopSettings(), cfg)
 	assert.NotNil(t, scrapers)
@@ -395,14 +417,69 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	scraper.client = mockClient{
 		instanceName:        scraper.instanceName,
 		SQL:                 scraper.sqlQuery,
-		maxQuerySampleCount: 10000,
+		maxQuerySampleCount: 1000,
 		lookbackTime:        20,
 	}
 
 	actualLogs, err := scraper.ScrapeLogs(context.Background())
-	// golden.WriteLogs(t, filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"), actualLogs)
 	assert.NoError(t, err)
-	expectedLogs, _ := golden.ReadLogs(filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml"))
+
+	expectedFile := filepath.Join("testdata", "expectedQueryTextAndPlanQuery.yaml")
+
+	// Uncomment line below to re-generate expected metrics.
+	// golden.WriteLogs(t, expectedFile, actualLogs)
+	expectedLogs, _ := golden.ReadLogs(expectedFile)
 	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())
 	assert.NoError(t, errs)
+}
+
+func TestInvalidQueryTextAndPlanQuery(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.Username = "sa"
+	cfg.Password = "password"
+	cfg.Port = 1433
+	cfg.Server = "0.0.0.0"
+	cfg.EnableTopQueryCollection = true
+	assert.NoError(t, cfg.Validate())
+
+	enableAllScraperMetrics(cfg, false)
+	cfg.EnableTopQueryCollection = true
+
+	scrapers := setupSQLServerLogsScrapers(receivertest.NewNopSettings(), cfg)
+	assert.NotNil(t, scrapers)
+
+	scraper := scrapers[0]
+	assert.NotNil(t, scraper.cache)
+
+	const totalElapsedTime = "total_elapsed_time"
+	const rowsReturned = "total_rows"
+	const totalWorkerTime = "total_worker_time"
+	const logicalReads = "total_logical_reads"
+	const logicalWrites = "total_logical_writes"
+	const physicalReads = "total_physical_reads"
+	const executionCount = "execution_count"
+	const totalGrant = "total_grant_kb"
+
+	queryHash := hex.EncodeToString([]byte("0x37849E874171E3F3"))
+	queryPlanHash := hex.EncodeToString([]byte("0xD3112909429A1B50"))
+	scraper.cacheAndDiff(queryHash, queryPlanHash, totalElapsedTime, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, rowsReturned, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalReads, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalWrites, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, physicalReads, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, executionCount, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, totalWorkerTime, 1)
+	scraper.cacheAndDiff(queryHash, queryPlanHash, totalGrant, 1)
+
+	scraper.client = mockInvalidClient{
+		mockClient: mockClient{
+			instanceName:        scraper.instanceName,
+			SQL:                 scraper.sqlQuery,
+			maxQuerySampleCount: 1000,
+			lookbackTime:        20,
+		},
+	}
+
+	_, err := scraper.ScrapeLogs(context.Background())
+	assert.Error(t, err)
 }
