@@ -379,16 +379,15 @@ func getSQLServerQueryMetricsQuery(instanceName string, maxQuerySampleCount uint
 	return fmt.Sprintf(sqlServerQueryMetrics, lookbackTimeStatement, topQueryCountStatement, instanceNameClause)
 }
 
-const sqlServerQueryTextAndPlan = `
+const _sqlForTopQueries = `
 %s
 %s
-with qstats as (
 SELECT TOP(@topNValue)
 REPLACE(@@SERVERNAME,'\',':') AS [sql_instance],
 HOST_NAME() AS [computer_name],
-MAX(qs.plan_handle) AS query_plan_handle,
-qs.query_hash AS query_hash,
-qs.query_plan_hash AS query_plan_hash,
+CONVERT(VARCHAR(1000), MAX(qs.plan_handle), 2) AS query_plan_handle,
+CONVERT(VARCHAR(1000), qs.query_hash, 2) AS query_hash,
+CONVERT(VARCHAR(1000), qs.query_plan_hash, 2) AS query_plan_hash,
 SUM(qs.execution_count) AS execution_count,
 SUM(qs.total_elapsed_time) AS total_elapsed_time,
 SUM(qs.total_worker_time) AS total_worker_time,
@@ -402,20 +401,30 @@ WHERE qs.last_execution_time BETWEEN DATEADD(SECOND, @lookbackTime, GETDATE()) A
 GROUP BY
 qs.query_hash,
 qs.query_plan_hash
-)
-SELECT qs.*,
+`
+
+const _sqlForQueryTextAndQueryPlan = `
+SELECT 
 SUBSTRING(st.text, (stats.statement_start_offset / 2) + 1,
-		 ((CASE statement_end_offset
+		 ((CASE stats.statement_end_offset
 			   WHEN -1 THEN DATALENGTH(st.text)
 			   ELSE stats.statement_end_offset END - stats.statement_start_offset) / 2) + 1) AS text,
 ISNULL(qp.query_plan, '') AS query_plan
-FROM qstats AS qs
-INNER JOIN sys.dm_exec_query_stats AS stats on qs.query_plan_handle = stats.plan_handle
-CROSS APPLY sys.dm_exec_query_plan(qs.query_plan_handle) AS qp
-CROSS APPLY sys.dm_exec_sql_text(qs.query_plan_handle) AS st;
+FROM sys.dm_exec_query_stats AS qs
+INNER JOIN sys.dm_exec_query_stats AS stats on qs.plan_handle = stats.plan_handle and qs.query_hash = stats.query_hash and qs.query_plan_hash = stats.query_plan_hash
+CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) AS qp
+CROSS APPLY sys.dm_exec_sql_text(qs.plan_handle) AS st
+WHERE qs.query_hash = 0x%s
+AND qs.query_plan_hash = 0x%s
+AND qs.plan_handle = 0x%s
+;
 `
 
-func getSQLServerQueryTextAndPlanQuery(instanceName string, maxQuerySampleCount uint, lookbackTime uint) string {
+func sqlForQueryTextAndQueryPlan(queryHash string, queryPlanHash string, queryPlanHandle string) string {
+	return fmt.Sprintf(_sqlForQueryTextAndQueryPlan, queryHash, queryPlanHash, queryPlanHandle)
+}
+
+func sqlForTopQueries(instanceName string, maxQuerySampleCount uint, lookbackTime uint) string {
 	topQueryCountStatement := fmt.Sprintf(topNValueDeclaration, maxQuerySampleCount)
 	lookbackTimeStatement := fmt.Sprintf(lookbackTimeDeclaration, lookbackTime)
 
@@ -427,7 +436,7 @@ func getSQLServerQueryTextAndPlanQuery(instanceName string, maxQuerySampleCount 
 		instanceNameClause = ""
 	}
 
-	return fmt.Sprintf(sqlServerQueryTextAndPlan, lookbackTimeStatement, topQueryCountStatement, instanceNameClause)
+	return fmt.Sprintf(_sqlForTopQueries, lookbackTimeStatement, topQueryCountStatement, instanceNameClause)
 }
 
 const sqlServerQuerySamples = `
