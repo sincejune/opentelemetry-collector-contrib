@@ -411,7 +411,7 @@ SUBSTRING(st.text, (stats.statement_start_offset / 2) + 1,
 			   ELSE stats.statement_end_offset END - stats.statement_start_offset) / 2) + 1) AS text,
 ISNULL(qp.query_plan, '') AS query_plan
 FROM sys.dm_exec_query_stats AS qs
-INNER JOIN sys.dm_exec_query_stats AS stats on qs.plan_handle = stats.plan_handle
+INNER JOIN sys.dm_exec_query_stats AS stats on qs.plan_handle = stats.plan_handle and qs.query_hash = stats.query_hash and qs.query_plan_hash = stats.query_plan_hash
 CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) AS qp
 CROSS APPLY sys.dm_exec_sql_text(qs.plan_handle) AS st
 WHERE qs.query_hash = 0x%s

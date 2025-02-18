@@ -668,6 +668,7 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 				errorsChan <- err
 			}
 			record.Attributes().PutStr("normalized_query_plan", obfuscatedQueryPlan)
+			record.Body().SetStr("text")
 		}(record, row, elapsedTimeDiffs[i])
 	}
 	wg.Wait()
