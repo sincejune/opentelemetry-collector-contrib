@@ -11,10 +11,10 @@ resourceLogs:
                   stringValue: sqlserver
               - key: query_hash
                 value:
-                  stringValue: "307833373834394538373431373145334633"
+                  stringValue: "0x37849e874171e3f3"
               - key: query_plan_hash
                 value:
-                  stringValue: "307844333131323930393432394131423530"
+                  stringValue: "0xd3112909429a1b50"
               - key: total_elapsed_time
                 value:
                   doubleValue: 2

@@ -5,7 +5,6 @@ package sqlserverreceiver
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
@@ -387,8 +386,8 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
 
-	queryHash := hex.EncodeToString([]byte("0x37849E874171E3F3"))
-	queryPlanHash := hex.EncodeToString([]byte("0xD3112909429A1B50"))
+	queryHash := "0x37849E874171E3F3"
+	queryPlanHash := "0xD3112909429A1B50"
 	scraper.cacheAndDiff(queryHash, queryPlanHash, totalElapsedTime, 1)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, rowsReturned, 1)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalReads, 1)

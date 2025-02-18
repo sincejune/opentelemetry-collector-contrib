@@ -130,7 +130,6 @@ func (s *sqlServerScraperHelper) ScrapeMetrics(ctx context.Context) (pmetric.Met
 func (s *sqlServerScraperHelper) ScrapeLogs(ctx context.Context) (plog.Logs, error) {
 	switch s.sqlQuery {
 	case sqlForTopQueries(s.instanceName, s.maxQuerySampleCount, s.lookbackTime):
-		// TODO: Add a logs builder for that
 		rows, err := s.retrieveTopQueryFromAllTime(ctx)
 		if err != nil {
 			return plog.Logs{}, err
@@ -505,8 +504,8 @@ func (s *sqlServerScraperHelper) getTopNQueriesByElapsedTimeDiff(rows []sqlquery
 	const totalElapsedTime = "total_elapsed_time"
 
 	for i, row := range rows {
-		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
-		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
+		queryHashVal := row[queryHash]
+		queryPlanHashVal := row[queryPlanHash]
 
 		elapsedTime, err := strconv.ParseInt(row[totalElapsedTime], 10, 64)
 		if err != nil {
@@ -576,15 +575,15 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 				s.logger.Info(fmt.Sprintf("retrieved %d results for text and query plan. query = %s", len(textAndQueryPlanResult), textAndQueryPlanQuery))
 			}
 
-			queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
-			queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
+			queryHashVal := row[queryHash]
+			queryPlanHashVal := row[queryPlanHash]
 
 			record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 
 			record.Attributes().PutStr(computerNameKey, row[computerNameKey])
 			record.Attributes().PutStr(instanceNameKey, row[instanceNameKey])
-			record.Attributes().PutStr(queryHash, queryHashVal)
-			record.Attributes().PutStr(queryPlanHash, queryPlanHashVal)
+			record.Attributes().PutStr(queryHash, strings.ToLower(queryHashVal))
+			record.Attributes().PutStr(queryPlanHash, strings.ToLower(queryPlanHashVal))
 
 			s.logger.Debug(fmt.Sprintf("DataRow: %v, PlanHash: %v, Hash: %v", row, queryPlanHashVal, queryHashVal))
 
