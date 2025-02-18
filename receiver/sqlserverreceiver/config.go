@@ -13,7 +13,7 @@ import (
 )
 
 type LogsConfig struct {
-	EnableQueryTextAndPlan bool `mapstructure:"enable_query_text_and_plan"`
+	EnableTopQueryCollection bool `mapstructure:"enable_top_query_collection"`
 }
 
 // Config defines configuration for a sqlserver receiver.
