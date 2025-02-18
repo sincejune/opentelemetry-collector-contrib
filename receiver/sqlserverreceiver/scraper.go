@@ -574,7 +574,7 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 			}
 
 			if len(textAndQueryPlanResult) != 1 {
-				s.logger.Info(fmt.Sprintf("retrieved %d results for text and query plan. query = %s, result = %v", len(textAndQueryPlanResult), textAndQueryPlanQuery, textAndQueryPlanResult))
+				s.logger.Info(fmt.Sprintf("retrieved %d results for text and query plan. query = %s", len(textAndQueryPlanResult), textAndQueryPlanQuery))
 			}
 
 			queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
