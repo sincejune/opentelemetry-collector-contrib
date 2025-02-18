@@ -659,6 +659,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 	const queryStart = "query_start"
 	const sessionID = "session_id"
 	const sessionStatus = "session_status"
+	const requestStatus = "request_status"
 	const hostname = "host_name"
 	const command = "command"
 	const statementText = "statement_text"
@@ -701,97 +702,100 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 		queryHashVal := hex.EncodeToString([]byte(row[queryHash]))
 		queryPlanHashVal := hex.EncodeToString([]byte(row[queryPlanHash]))
 		contextInfoVal := hex.EncodeToString([]byte(row[contextInfo]))
-		// clientPort could be null, and it will be converted to empty string with ISNULL in our query. when it is
-		// an empty string, clientPortNumber would be 0.
-		clientPortNumber := 0
-		if row[clientPort] != "" {
-			clientPortNumber, err = strconv.Atoi(row[clientPort])
-			if err != nil {
-				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing client port number. original value: %s, err: %s", row[clientPort], err))
-			}
-		}
 
-		sessionIDNumber, err := strconv.Atoi(row[sessionID])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing session id number. original value: %s, err: %s", row[sessionID], err))
-		}
-		blockingSessionIDNumber, err := strconv.Atoi(row[blockingSessionID])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing blocking session id number. value: %s, err: %s", row[blockingSessionID], err))
-		}
-		waitTimeVal, err := strconv.Atoi(row[waitTime])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing wait time number. original value: %s, err: %s", row[waitTime], err))
-		}
-		openTransactionCountVal, err := strconv.Atoi(row[openTransactionCount])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing open transaction count. original value: %s, err: %s", row[openTransactionCount], err))
-		}
-		transactionIDVal, err := strconv.Atoi(row[transactionID])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing transaction id number. original value: %s, err: %s", row[transactionID], err))
-		}
-		// percent complete and estimated completion time is a real value in mssql
-		percentCompleteVal, err := strconv.ParseFloat(row[percentComplete], 32)
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing percent complete. original value: %s, err: %s", row[percentComplete], err))
-		}
-		estimatedCompletionTimeVal, err := strconv.ParseFloat(row[estimatedCompletionTime], 32)
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing estimated completion time number. original value: %s, err: %s", row[estimatedCompletionTime], err))
-		}
-		cpuTimeVal, err := strconv.Atoi(row[cpuTime])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing cpu time number. original value: %s, err: %s", row[cpuTime], err))
-		}
-		totalElapsedTimeVal, err := strconv.Atoi(row[totalElapsedTime])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing total elapsed time. original value: %s, err: %s", row[totalElapsedTime], err))
-		}
-		readsVal, err := strconv.Atoi(row[reads])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing read count. original value: %s, err: %s", row[reads], err))
-		}
-		writesVal, err := strconv.Atoi(row[writes])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing write count. original value: %s, err: %s", row[writes], err))
-		}
-		logicalReadsVal, err := strconv.Atoi(row[logicalReads])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing logical read count. original value: %s, err: %s", row[logicalReads], err))
-		}
-		transactionIsolationLevelVal, err := strconv.Atoi(row[transactionIsolationLevel])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing transaction isolation level. original value: %s, err: %s", row[transactionIsolationLevel], err))
-		}
-		lockTimeoutVal := 0
-		if row[lockTimeout] != "" {
-			lockTimeoutVal, err = strconv.Atoi(row[lockTimeout])
-			if err != nil {
-				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing lock timeout. original value: %s, err: %s", row[lockTimeout], err))
-			}
-		}
-
-		deadlockPriorityVal := 0
-		if row[deadlockPriority] != "" {
-			deadlockPriorityVal, err = strconv.Atoi(row[deadlockPriority])
-			if err != nil {
-				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing deadlock priority. original value: %s, err: %s", row[deadlockPriority], err))
-			}
-		}
-
-		rowCountVal, err := strconv.Atoi(row[rowCount])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing row count. original value: %s, err: %s", row[rowCount], err))
-		}
-
-		obfuscatedStatement, err := obfuscateSQL(row[statementText])
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("failed to obfuscate SQL statement value: %s err: %s", row[statementText], err))
-		}
 		cacheKey := queryHashVal + "-" + queryPlanHashVal
 
 		if _, ok := s.cache.Get(cacheKey); !ok {
+			// clientPort could be null, and it will be converted to empty string with ISNULL in our query. when it is
+			// an empty string, clientPortNumber would be 0.
+			clientPortNumber := 0
+			if row[clientPort] != "" {
+				clientPortNumber, err = strconv.Atoi(row[clientPort])
+				if err != nil {
+					s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing client port number. original value: %s, err: %s", row[clientPort], err))
+				}
+			}
+
+			sessionIDNumber, err := strconv.Atoi(row[sessionID])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing session id number. original value: %s, err: %s", row[sessionID], err))
+			}
+			blockingSessionIDNumber, err := strconv.Atoi(row[blockingSessionID])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing blocking session id number. value: %s, err: %s", row[blockingSessionID], err))
+			}
+			waitTimeVal, err := strconv.Atoi(row[waitTime])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing wait time number. original value: %s, err: %s", row[waitTime], err))
+			}
+			openTransactionCountVal, err := strconv.Atoi(row[openTransactionCount])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing open transaction count. original value: %s, err: %s", row[openTransactionCount], err))
+			}
+			transactionIDVal, err := strconv.Atoi(row[transactionID])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing transaction id number. original value: %s, err: %s", row[transactionID], err))
+			}
+			// percent complete and estimated completion time is a real value in mssql
+			percentCompleteVal, err := strconv.ParseFloat(row[percentComplete], 32)
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing percent complete. original value: %s, err: %s", row[percentComplete], err))
+			}
+			estimatedCompletionTimeVal, err := strconv.ParseFloat(row[estimatedCompletionTime], 32)
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing estimated completion time number. original value: %s, err: %s", row[estimatedCompletionTime], err))
+			}
+			cpuTimeVal, err := strconv.Atoi(row[cpuTime])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing cpu time number. original value: %s, err: %s", row[cpuTime], err))
+			}
+			totalElapsedTimeVal, err := strconv.Atoi(row[totalElapsedTime])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing total elapsed time. original value: %s, err: %s", row[totalElapsedTime], err))
+			}
+			readsVal, err := strconv.Atoi(row[reads])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing read count. original value: %s, err: %s", row[reads], err))
+			}
+			writesVal, err := strconv.Atoi(row[writes])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing write count. original value: %s, err: %s", row[writes], err))
+			}
+			logicalReadsVal, err := strconv.Atoi(row[logicalReads])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing logical read count. original value: %s, err: %s", row[logicalReads], err))
+			}
+			transactionIsolationLevelVal, err := strconv.Atoi(row[transactionIsolationLevel])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing transaction isolation level. original value: %s, err: %s", row[transactionIsolationLevel], err))
+			}
+			// todo: check case sensitive?
+			lockTimeoutVal := 0
+			if row[lockTimeout] != "" {
+				lockTimeoutVal, err = strconv.Atoi(row[lockTimeout])
+				if err != nil {
+					s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing lock timeout. original value: %s, err: %s", row[lockTimeout], err))
+				}
+			}
+
+			deadlockPriorityVal := 0
+			if row[deadlockPriority] != "" {
+				deadlockPriorityVal, err = strconv.Atoi(row[deadlockPriority])
+				if err != nil {
+					s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing deadlock priority. original value: %s, err: %s", row[deadlockPriority], err))
+				}
+			}
+
+			rowCountVal, err := strconv.Atoi(row[rowCount])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("sqlServerScraperHelper failed parsing row count. original value: %s, err: %s", row[rowCount], err))
+			}
+
+			obfuscatedStatement, err := obfuscateSQL(row[statementText])
+			if err != nil {
+				s.logger.Error(fmt.Sprintf("failed to obfuscate SQL statement value: %s err: %s", row[statementText], err))
+			}
+
 			// TODO: report this value
 			record := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 			record.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
@@ -801,6 +805,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			record.Attributes().PutStr(queryStart, row[queryStart])
 			record.Attributes().PutInt(sessionID, int64(sessionIDNumber))
 			record.Attributes().PutStr(sessionStatus, row[sessionStatus])
+			record.Attributes().PutStr(requestStatus, row[requestStatus])
 			record.Attributes().PutStr(hostname, row[hostname])
 			record.Attributes().PutStr(command, row[command])
 			record.Attributes().PutStr(statementText, obfuscatedStatement)
