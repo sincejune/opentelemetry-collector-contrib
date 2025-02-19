@@ -95,3 +95,12 @@ func (c *FakeDBClient) QueryRows(context.Context, ...any) ([]StringMap, error) {
 	c.RequestCounter++
 	return c.StringMaps[idx], nil
 }
+
+func (c *FakeDBClient) ExecuteQuery(context.Context, string, ...any) ([]StringMap, error) {
+	if c.Err != nil {
+		return nil, c.Err
+	}
+	idx := c.RequestCounter
+	c.RequestCounter++
+	return c.StringMaps[idx], nil
+}
