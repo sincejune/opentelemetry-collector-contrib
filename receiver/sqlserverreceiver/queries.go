@@ -366,7 +366,7 @@ GROUP BY
 `
 
 const _sqlForQueryTextAndQueryPlan = `
-SELECT 
+SELECT
 SUBSTRING(st.text, (stats.statement_start_offset / 2) + 1,
 		 ((CASE stats.statement_end_offset
 			   WHEN -1 THEN DATALENGTH(st.text)
@@ -379,7 +379,6 @@ CROSS APPLY sys.dm_exec_sql_text(qs.plan_handle) AS st
 WHERE qs.query_hash = %s
 AND qs.query_plan_hash = %s
 AND qs.plan_handle = %s
-;
 `
 
 func sqlForQueryTextAndQueryPlan(queryHash string, queryPlanHash string, queryPlanHandle string) string {

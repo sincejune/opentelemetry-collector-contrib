@@ -70,7 +70,7 @@ func TestQueryContents(t *testing.T) {
 	}
 }
 
-func TestQueryTextAndPlanQueryContents(t *testing.T) {
+func TestSqlForTopQueriesContents(t *testing.T) {
 	queryTests := []struct {
 		name                     string
 		instanceName             string
@@ -105,6 +105,38 @@ func TestQueryTextAndPlanQueryContents(t *testing.T) {
 			expected := strings.ReplaceAll(string(expectedBytes), "\r\n", "\n")
 
 			actual := tt.getQuery(tt.instanceName, tt.maxQuerySampleCount, tt.lookbackTime)
+			require.Equal(t, expected, actual)
+		})
+	}
+}
+
+func TestSqlForQueryTextAndQueryPlanContents(t *testing.T) {
+	queryTests := []struct {
+		name                     string
+		queryHash                string
+		queryPlanHash            string
+		queryPlanHandle          string
+		getQuery                 func(string, string, string) string
+		expectedQueryValFilename string
+	}{
+		{
+			name:                     "Test query text and query plan without instance name",
+			queryHash:                "0x111",
+			queryPlanHash:            "0x1111",
+			queryPlanHandle:          "0x11111",
+			getQuery:                 sqlForQueryTextAndQueryPlan,
+			expectedQueryValFilename: "databaseSqlForQueryTextAndQueryPlan.txt",
+		},
+	}
+
+	for _, tt := range queryTests {
+		t.Run(tt.name, func(t *testing.T) {
+			expectedBytes, err := os.ReadFile(path.Join("./testdata", tt.expectedQueryValFilename))
+			require.NoError(t, err)
+			// Replace all will fix newlines when testing on Windows
+			expected := strings.ReplaceAll(string(expectedBytes), "\r\n", "\n")
+
+			actual := tt.getQuery(tt.queryHash, tt.queryPlanHash, tt.queryPlanHandle)
 			require.Equal(t, expected, actual)
 		})
 	}
