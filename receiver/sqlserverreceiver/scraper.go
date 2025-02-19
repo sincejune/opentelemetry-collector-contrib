@@ -485,8 +485,13 @@ func (s *sqlServerScraperHelper) recordNTopQueryWithTextAndPlan(ctx context.Cont
 				return
 			}
 
+			if len(textAndQueryPlanResult) == 0 {
+				errorsChan <- fmt.Errorf("no results returned for text and query plan: query = %s", textAndQueryPlanQuery)
+				return
+			}
+
 			if len(textAndQueryPlanResult) != 1 {
-				s.logger.Info(fmt.Sprintf("retrieved %d results for text and query plan. query = %s", len(textAndQueryPlanResult), textAndQueryPlanQuery))
+				s.logger.Warn(fmt.Sprintf("retrieved multiple results for text and query plan, will only use the first one. number = %d, query = %s", len(textAndQueryPlanResult), textAndQueryPlanQuery))
 			}
 
 			queryHashVal := row[queryHash]
