@@ -71,6 +71,7 @@ func (cl DbSQLClient) ExecuteQuery(ctx context.Context, query string, args ...an
 	}
 	return out, errors.Join(warnings...)
 }
+
 func (cl DbSQLClient) prepareQueryFields(sql string, args []any) []zap.Field {
 	var logFields []zap.Field
 	if cl.Telemetry.Logs.Query {
