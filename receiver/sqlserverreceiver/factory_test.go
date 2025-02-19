@@ -205,7 +205,7 @@ func TestFactory(t *testing.T) {
 
 				databaseTopQueryScraperFound := false
 				for _, scraper := range sqlScrapers {
-					if scraper.sqlQuery == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
+					if scraper.sqlQuery == sqlForTopQueries(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
 						databaseTopQueryScraperFound = true
 						break
 					}

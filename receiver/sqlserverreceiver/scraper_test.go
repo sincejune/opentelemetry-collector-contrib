@@ -5,9 +5,9 @@ package sqlserverreceiver
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -245,19 +245,27 @@ func readFile(fname string) ([]sqlquery.StringMap, error) {
 	return metrics, nil
 }
 
-func (mc mockClient) QueryRows(context.Context, ...any) ([]sqlquery.StringMap, error) {
+func (mc mockClient) QueryRows(ctx context.Context, args ...any) ([]sqlquery.StringMap, error) {
+	return mc.ExecuteQuery(ctx, mc.SQL, args)
+}
+
+func (mc mockClient) ExecuteQuery(ctx context.Context, query string, args ...any) ([]sqlquery.StringMap, error) {
 	var queryResults []sqlquery.StringMap
 	var err error
 
-	switch mc.SQL {
+	switch query {
 	case getSQLServerDatabaseIOQuery(mc.instanceName):
 		queryResults, err = readFile("database_io_scraped_data.txt")
 	case getSQLServerPerformanceCounterQuery(mc.instanceName):
 		queryResults, err = readFile("perfCounterQueryData.txt")
 	case getSQLServerPropertiesQuery(mc.instanceName):
 		queryResults, err = readFile("propertyQueryData.txt")
-	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
-		queryResults, err = readFile("queryTextAndPlanQueryData.txt")
+	case sqlForTopQueries(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
+		queryResults, err = readFile("queryTopQueries.txt")
+	case sqlForQueryTextAndQueryPlan("0x37849E874171E3F3", "0xD3112909429A1B50", "0x06000100E2B3C02AA042A7001000000001000000000000000000000000000000000000000000000000000000"):
+		queryResults, err = readFile("queryTextAndPlan.txt")
+	case sqlForQueryTextAndQueryPlan("0xinvalid", "0xinvalid", "0xinvalid"):
+		queryResults, err = readFile("invalidQueryTextAndPlan.txt")
 	default:
 		return nil, errors.New("No valid query found")
 	}
@@ -273,7 +281,7 @@ func (mc mockInvalidClient) QueryRows(context.Context, ...any) ([]sqlquery.Strin
 	var err error
 
 	switch mc.SQL {
-	case getSQLServerQueryTextAndPlanQuery(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
+	case sqlForTopQueries(mc.instanceName, mc.maxQuerySampleCount, mc.lookbackTime):
 		queryResults, err = readFile("queryTextAndPlanQueryInvalidData.txt")
 	default:
 		return nil, errors.New("No valid query found")
@@ -313,8 +321,8 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
 
-	queryHash := hex.EncodeToString([]byte("0x37849E874171E3F3"))
-	queryPlanHash := hex.EncodeToString([]byte("0xD3112909429A1B50"))
+	queryHash := "0x37849E874171E3F3"
+	queryPlanHash := "0xD3112909429A1B50"
 	scraper.cacheAndDiff(queryHash, queryPlanHash, totalElapsedTime, 1)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, rowsReturned, 1)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalReads, 1)
@@ -340,6 +348,12 @@ func TestQueryTextAndPlanQuery(t *testing.T) {
 	// Uncomment line below to re-generate expected metrics.
 	// golden.WriteLogs(t, expectedFile, actualLogs)
 	expectedLogs, _ := golden.ReadLogs(expectedFile)
+	aaa, _ := json.Marshal(actualLogs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes().AsRaw())
+	eee, _ := json.Marshal(expectedLogs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes().AsRaw())
+
+	fmt.Println("aaa", string(aaa))
+	fmt.Println("eee", string(eee))
+
 	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())
 	assert.NoError(t, errs)
 }
@@ -371,8 +385,8 @@ func TestInvalidQueryTextAndPlanQuery(t *testing.T) {
 	const executionCount = "execution_count"
 	const totalGrant = "total_grant_kb"
 
-	queryHash := hex.EncodeToString([]byte("0x37849E874171E3F3"))
-	queryPlanHash := hex.EncodeToString([]byte("0xD3112909429A1B50"))
+	queryHash := "0xinvalid"
+	queryPlanHash := "0xinvalid"
 	scraper.cacheAndDiff(queryHash, queryPlanHash, totalElapsedTime, 1)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, rowsReturned, 1)
 	scraper.cacheAndDiff(queryHash, queryPlanHash, logicalReads, 1)

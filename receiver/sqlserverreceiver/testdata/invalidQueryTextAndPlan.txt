@@ -1,0 +1,6 @@
+[
+    {
+      	"query_text": "[msdb].[dbo].[sysjobhistory].[run_duration] as [sjh].[run_duration]/(10000)*(3600)+[msdb].[dbo].[sysjobhistory].[run_duration] as [sjh].[run_duration]%(10000)/(100)*(60)+[msdb].[dbo].[sysjobhistory].[run_duration] as [sjh].[run_duration]%(100)",
+		"query_plan": "<ShowPlanXML"
+    }
+]

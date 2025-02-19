@@ -22,6 +22,7 @@ type StringMap map[string]string
 
 type DbClient interface {
 	QueryRows(ctx context.Context, args ...any) ([]StringMap, error)
+	ExecuteQuery(ctx context.Context, query string, args ...any) ([]StringMap, error)
 }
 
 type DbSQLClient struct {
@@ -41,8 +42,12 @@ func NewDbClient(db Db, sql string, logger *zap.Logger, telemetry TelemetryConfi
 }
 
 func (cl DbSQLClient) QueryRows(ctx context.Context, args ...any) ([]StringMap, error) {
-	cl.Logger.Debug("Running query", cl.prepareQueryFields(cl.SQL, args)...)
-	sqlRows, err := cl.Db.QueryContext(ctx, cl.SQL, args...)
+	return cl.ExecuteQuery(ctx, cl.SQL, args...)
+}
+
+func (cl DbSQLClient) ExecuteQuery(ctx context.Context, query string, args ...any) ([]StringMap, error) {
+	cl.Logger.Debug("Running query", cl.prepareQueryFields(query, args)...)
+	sqlRows, err := cl.Db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +71,6 @@ func (cl DbSQLClient) QueryRows(ctx context.Context, args ...any) ([]StringMap, 
 	}
 	return out, errors.Join(warnings...)
 }
-
 func (cl DbSQLClient) prepareQueryFields(sql string, args []any) []zap.Field {
 	var logFields []zap.Field
 	if cl.Telemetry.Logs.Query {

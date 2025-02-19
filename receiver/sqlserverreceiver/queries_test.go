@@ -84,7 +84,7 @@ func TestQueryTextAndPlanQueryContents(t *testing.T) {
 			instanceName:             "",
 			maxQuerySampleCount:      1000,
 			lookbackTime:             60,
-			getQuery:                 getSQLServerQueryTextAndPlanQuery,
+			getQuery:                 sqlForTopQueries,
 			expectedQueryValFilename: "databaseTopQueryWithoutInstanceName.txt",
 		},
 		{
@@ -92,7 +92,7 @@ func TestQueryTextAndPlanQueryContents(t *testing.T) {
 			instanceName:             "instanceName",
 			maxQuerySampleCount:      2000,
 			lookbackTime:             120,
-			getQuery:                 getSQLServerQueryTextAndPlanQuery,
+			getQuery:                 sqlForTopQueries,
 			expectedQueryValFilename: "databaseTopQueryWithInstanceName.txt",
 		},
 	}
