@@ -77,7 +77,7 @@ func setupLogQueries(cfg *Config) []string {
 	var queries []string
 
 	if cfg.EnableTopQueryCollection {
-		queries = append(queries, getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
+		queries = append(queries, sqlForTopQueries(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime))
 	}
 
 	return queries
@@ -164,7 +164,7 @@ func setupSQLServerLogsScrapers(params receiver.Settings, cfg *Config) []*sqlSer
 		var cache *lru.Cache[string, int64]
 		var err error
 
-		if query == getSQLServerQueryTextAndPlanQuery(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
+		if query == sqlForTopQueries(cfg.InstanceName, cfg.MaxQuerySampleCount, cfg.LookbackTime) {
 			// we have 8 metrics in this query and multiple 2 to allow to cache more queries.
 			cache, err = lru.New[string, int64](int(cfg.MaxQuerySampleCount * 8 * 2))
 			if err != nil {
