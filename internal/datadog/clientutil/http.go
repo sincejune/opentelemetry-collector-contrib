@@ -62,18 +62,12 @@ func NewHTTPClient(hcs confighttp.ClientConfig) *http.Client {
 	if hcs.WriteBufferSize > 0 {
 		transport.WriteBufferSize = hcs.WriteBufferSize
 	}
-	if hcs.MaxIdleConns != nil {
-		transport.MaxIdleConns = *hcs.MaxIdleConns
-	}
-	if hcs.MaxIdleConnsPerHost != nil {
-		transport.MaxIdleConnsPerHost = *hcs.MaxIdleConnsPerHost
-	}
-	if hcs.MaxConnsPerHost != nil {
-		transport.MaxConnsPerHost = *hcs.MaxConnsPerHost
-	}
-	if hcs.IdleConnTimeout != nil {
-		transport.IdleConnTimeout = *hcs.IdleConnTimeout
-	}
+
+	transport.MaxIdleConns = hcs.MaxIdleConns
+	transport.MaxIdleConnsPerHost = hcs.MaxIdleConnsPerHost
+	transport.MaxConnsPerHost = hcs.MaxConnsPerHost
+	transport.IdleConnTimeout = hcs.IdleConnTimeout
+
 	transport.DisableKeepAlives = hcs.DisableKeepAlives
 	return &http.Client{
 		Timeout:   hcs.Timeout,
