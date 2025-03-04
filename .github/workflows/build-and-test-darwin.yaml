@@ -1,14 +1,14 @@
 name: build-and-test-darwin
 on:
   push:
-    branches: [main]
+    branches: [main, deprecate-macos12-runner]
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
   merge_group:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
-    branches:
-      - main
+#    branches:
+#      - main
 env:
   TEST_RESULTS: testbed/tests/results/junit/results.xml
   # Make sure to exit early if cache segment download times out after 2 minutes.
