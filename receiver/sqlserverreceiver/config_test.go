@@ -64,6 +64,20 @@ func TestValidate(t *testing.T) {
 			},
 			expectedSuccess: true,
 		},
+		{
+			desc: "config with invalid MaxQuerySampleCount value",
+			cfg: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+				ControllerConfig:     scraperhelper.NewDefaultControllerConfig(),
+				LogsConfig: LogsConfig{
+					QuerySample{
+						EnableQuerySample:    true,
+						MaxCachedQuerySample: 100000,
+					},
+				},
+			},
+			expectedSuccess: false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -122,6 +136,12 @@ func TestLoadConfig(t *testing.T) {
 		}
 		expected.ComputerName = "CustomServer"
 		expected.InstanceName = "CustomInstance"
+		expected.LogsConfig = LogsConfig{
+			QuerySample{
+				EnableQuerySample:    true,
+				MaxCachedQuerySample: 1450,
+			},
+		}
 
 		sub, err := cm.Sub("sqlserver/named")
 		require.NoError(t, err)
