@@ -47,6 +47,10 @@ func TestFactory(t *testing.T) {
 						MaxQuerySampleCount:      1000,
 						TopQueryCount:            200,
 					},
+					QuerySample: QuerySample{
+						EnableQuerySample: false,
+						MaxResultPerQuery: 100,
+					},
 					MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 				}
 

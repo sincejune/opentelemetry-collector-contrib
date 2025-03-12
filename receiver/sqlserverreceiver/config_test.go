@@ -150,6 +150,11 @@ func TestLoadConfig(t *testing.T) {
 		expected.TopQueryCount = 200
 		expected.TopQueryCollection.MaxQuerySampleCount = 1000
 
+		expected.QuerySample = QuerySample{
+			EnableQuerySample: true,
+			MaxResultPerQuery: 1450,
+		}
+
 		sub, err := cm.Sub("sqlserver/named")
 		require.NoError(t, err)
 		require.NoError(t, sub.Unmarshal(cfg))
