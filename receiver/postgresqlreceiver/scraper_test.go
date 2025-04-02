@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/testutil"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
@@ -385,6 +386,11 @@ type (
 	mockClientFactory struct{ mock.Mock }
 	mockClient        struct{ mock.Mock }
 )
+
+// getQuerySamples implements client.
+func (m *mockClient) getQuerySamples(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error) {
+	panic("unimplemented")
+}
 
 var _ client = &mockClient{}
 

@@ -164,8 +164,46 @@ func (p *postgreSQLScraper) scrape(ctx context.Context) (pmetric.Metrics, error)
 	return p.mb.Emit(), errs.combine()
 }
 
-func (p *postgreSQLScraper) scrapeLogs(ctx context.Context) (plog.Logs, error) {
+func (p *postgreSQLScraper) scrapeQuerySamples(ctx context.Context, maxRowsPerQuery int64) (plog.Logs, error) {
+	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
 
+	scopedLog := resourceLog.ScopeLogs().AppendEmpty()
+	scopedLog.Scope().SetName(metadata.ScopeName)
+	scopedLog.Scope().SetVersion("0.0.1")
+
+	dbClient, err := p.clientFactory.getClient(defaultPostgreSQLDatabase)
+	if err != nil {
+		p.logger.Error("Failed to initialize connection to postgres", zap.Error(err))
+		return logs, err
+	}
+
+	var errs errsMux
+
+	logRecords := scopedLog.LogRecords()
+
+	p.collectQuerySamples(ctx, dbClient, &logRecords, maxRowsPerQuery, &errs, p.logger)
+
+	defer dbClient.Close()
+
+	return logs, nil
+}
+
+func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient client, logRecords *plog.LogRecordSlice, limit int64, mux *errsMux, logger *zap.Logger) {
+	timestamp := pcommon.NewTimestampFromTime(time.Now())
+
+	attributes, err := dbClient.getQuerySamples(ctx, limit, logger)
+	if err != nil {
+		mux.addPartial(err)
+		return
+	}
+	for _, atts := range attributes {
+		logger.Info("Query sample", zap.Any("attributes", atts))
+		record := logRecords.AppendEmpty()
+		record.SetTimestamp(timestamp)
+		record.SetEventName("query sample")
+		record.Attributes().FromRaw(atts)
+	}
 }
 
 func (p *postgreSQLScraper) shutdown(_ context.Context) error {

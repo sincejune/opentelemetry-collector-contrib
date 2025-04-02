@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/scraper"
 	"go.opentelemetry.io/collector/scraper/scraperhelper"
@@ -42,6 +43,10 @@ func createDefaultConfig() component.Config {
 			InsecureSkipVerify: true,
 		},
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		QuerySampleCollection: QuerySampleCollection{
+			Enabled:         false,
+			MaxRowsPerQuery: 1000,
+		},
 	}
 }
 
@@ -93,7 +98,10 @@ func createLogsReceiver(
 	}
 
 	ns := newPostgreSQLScraper(params, cfg, clientFactory)
-	s, err := scraper.NewLogs(ns.scrapeLogs, scraper.WithShutdown(ns.shutdown))
+
+	s, err := scraper.NewLogs(func(ctx context.Context) (plog.Logs, error) {
+		return ns.scrapeQuerySamples(ctx, cfg.MaxRowsPerQuery)
+	}, scraper.WithShutdown(ns.shutdown))
 	if err != nil {
 		return nil, err
 	}
