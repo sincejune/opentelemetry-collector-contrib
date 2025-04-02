@@ -22,7 +22,9 @@ func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
-		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability))
+		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability),
+		receiver.WithLogs(createLogsReceiver, metadata.LogsStability),
+	)
 }
 
 func createDefaultConfig() component.Config {
@@ -67,5 +69,42 @@ func createMetricsReceiver(
 	return scraperhelper.NewMetricsController(
 		&cfg.ControllerConfig, params, consumer,
 		scraperhelper.AddScraper(metadata.Type, s),
+	)
+}
+
+func setupLogQueries(cfg *Config) []string {
+	return []string{""}
+}
+
+// createLogsReceiver create a logs receiver based on provided config.
+func createLogsReceiver(
+	_ context.Context,
+	params receiver.Settings,
+	receiverCfg component.Config,
+	logsConsumer consumer.Logs,
+) (receiver.Logs, error) {
+	cfg := receiverCfg.(*Config)
+
+	var clientFactory postgreSQLClientFactory
+	if connectionPoolGate.IsEnabled() {
+		clientFactory = newPoolClientFactory(cfg)
+	} else {
+		clientFactory = newDefaultClientFactory(cfg)
+	}
+
+	ns := newPostgreSQLScraper(params, cfg, clientFactory)
+	s, err := scraper.NewLogs(ns.scrapeLogs, scraper.WithShutdown(ns.shutdown))
+	if err != nil {
+		return nil, err
+	}
+
+	opt := scraperhelper.AddFactoryWithConfig(
+		scraper.NewFactory(metadata.Type, nil,
+			scraper.WithLogs(func(context.Context, scraper.Settings, component.Config) (scraper.Logs, error) {
+				return s, nil
+			}, component.StabilityLevelAlpha)), nil)
+
+	return scraperhelper.NewLogsController(
+		&cfg.ControllerConfig, params, logsConsumer, opt,
 	)
 }

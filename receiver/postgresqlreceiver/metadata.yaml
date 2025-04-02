@@ -4,6 +4,7 @@ status:
   class: receiver
   stability:
     unmaintained: [metrics]
+    development: [logs]
   distributions: [contrib]
   codeowners:
     seeking_new: true
