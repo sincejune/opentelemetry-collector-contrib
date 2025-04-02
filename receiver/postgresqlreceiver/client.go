@@ -781,7 +781,6 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 			"query_start",
 			"wait_event_type",
 			"wait_event",
-			"query",
 			"query_id",
 			"backend_xid",
 		}
@@ -801,7 +800,6 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 		currentAttributes["client_port"] = client_port
 		currentAttributes["db.query.text"] = row["query"]
 		currentAttributes["db.namespace"] = row["datname"]
-		currentAttributes["client_addrs"] = row["client_addr"]
 		currentAttributes["db.system.name"] = "postgresql"
 		finalAttributes = append(finalAttributes, currentAttributes)
 	}
