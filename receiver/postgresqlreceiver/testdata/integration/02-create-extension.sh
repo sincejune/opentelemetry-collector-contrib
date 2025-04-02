@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+echo "Enabling pg_stat_statements"
+psql -v ON_ERROR_STOP=1 --username "root" --dbname "postgres" <<-EOSQL
+  CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+EOSQL
+
+psql -v ON_ERROR_STOP=1 --username "root" --dbname "otel2" <<-EOSQL
+  CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+EOSQL

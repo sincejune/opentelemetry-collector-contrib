@@ -18,6 +18,8 @@ import (
 	"go.opentelemetry.io/collector/scraper/scrapererror"
 	"go.uber.org/zap"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/postgresqlreceiver/internal/metadata"
 )
 
@@ -41,7 +43,7 @@ type postgreSQLScraper struct {
 	clientFactory postgreSQLClientFactory
 	mb            *metadata.MetricsBuilder
 	excludes      map[string]struct{}
-
+	cache         *lru.Cache[string, float64]
 	// if enabled, uses a separated attribute for the schema
 	separateSchemaAttr bool
 }
@@ -73,6 +75,7 @@ func newPostgreSQLScraper(
 	settings receiver.Settings,
 	config *Config,
 	clientFactory postgreSQLClientFactory,
+	cache *lru.Cache[string, float64],
 ) *postgreSQLScraper {
 	excludes := make(map[string]struct{})
 	for _, db := range config.ExcludeDatabases {
@@ -92,6 +95,7 @@ func newPostgreSQLScraper(
 		clientFactory: clientFactory,
 		mb:            metadata.NewMetricsBuilder(config.MetricsBuilderConfig, settings),
 		excludes:      excludes,
+		cache:         cache,
 
 		separateSchemaAttr: separateSchemaAttr,
 	}
@@ -189,6 +193,31 @@ func (p *postgreSQLScraper) scrapeQuerySamples(ctx context.Context, maxRowsPerQu
 	return logs, nil
 }
 
+func (p *postgreSQLScraper) scrapeTopQuery(ctx context.Context, maxRowsPerQuery int64) (plog.Logs, error) {
+	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
+
+	scopedLog := resourceLog.ScopeLogs().AppendEmpty()
+	scopedLog.Scope().SetName(metadata.ScopeName)
+	scopedLog.Scope().SetVersion("0.0.1")
+
+	dbClient, err := p.clientFactory.getClient(defaultPostgreSQLDatabase)
+	if err != nil {
+		p.logger.Error("Failed to initialize connection to postgres", zap.Error(err))
+		return logs, err
+	}
+
+	var errs errsMux
+
+	logRecords := scopedLog.LogRecords()
+
+	p.collectTopQuery(ctx, dbClient, &logRecords, maxRowsPerQuery, &errs, p.logger)
+
+	defer dbClient.Close()
+
+	return logs, nil
+}
+
 func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient client, logRecords *plog.LogRecordSlice, limit int64, mux *errsMux, logger *zap.Logger) {
 	timestamp := pcommon.NewTimestampFromTime(time.Now())
 
@@ -206,6 +235,150 @@ func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient cl
 			logger.Error("failed to read attributes from row", zap.Error(err))
 		}
 		record.Body().SetStr("sample")
+	}
+}
+
+func (p *postgreSQLScraper) collectTopQuery(ctx context.Context, dbClient client, logRecords *plog.LogRecordSlice, limit int64, mux *errsMux, logger *zap.Logger) {
+	timestamp := pcommon.NewTimestampFromTime(time.Now())
+
+	attributes, err := dbClient.getTopQuery(ctx, limit, logger)
+	if err != nil {
+		logger.Error("failed to get top query", zap.Error(err))
+		mux.addPartial(err)
+		return
+	}
+
+	type updatedOnlyInfo struct {
+		suffix         string
+		finalConverter func(float64) any
+	}
+
+	updatedOnly := map[string]updatedOnlyInfo{
+		TOTAL_EXEC_TIME_COLUMN_NAME: {
+			suffix: EXECUTION_TIME_SUFFIX,
+		},
+		TOTAL_PLAN_TIME_COLUMN_NAME: {
+			suffix: PLAN_TIME_SUFFIX,
+		},
+		ROWS_COLUMN_NAME: {
+			suffix: ROWS_SUFFIX,
+			finalConverter: func(f float64) any {
+				return int64(f)
+			},
+		},
+		CALLS_COLUMN_NAME: {
+			suffix: CALLS_SUFFIX,
+			finalConverter: func(f float64) any {
+				return int64(f)
+			},
+		},
+	}
+
+	for _, atts := range attributes {
+		queryId := atts[DB_ATTRIBUTE_PREFIX+QUERYID_COLUMN_NAME]
+
+		if queryId == nil {
+			// this should not happen, but in case
+			logger.Error("queryid is nil", zap.Any("atts", atts))
+			mux.addPartial(fmt.Errorf("queryid is nil"))
+			continue
+		}
+
+		for columnName, info := range updatedOnly {
+			var valInAtts float64
+			_val := atts[DB_ATTRIBUTE_PREFIX+columnName]
+			if i, ok := _val.(int64); ok {
+				valInAtts = float64(i)
+			} else {
+				valInAtts = _val.(float64)
+			}
+			valInCache, exist := p.cache.Get(queryId.(string) + info.suffix)
+			valDelta := valInAtts
+			if exist {
+				valDelta = valInAtts - valInCache
+			}
+			finalValue := float64(0)
+			if valDelta > 0 {
+				p.cache.Add(queryId.(string)+info.suffix, valDelta)
+				finalValue = valDelta
+			}
+			if info.finalConverter != nil {
+				atts[DB_ATTRIBUTE_PREFIX+columnName] = info.finalConverter(finalValue)
+			} else {
+				atts[DB_ATTRIBUTE_PREFIX+columnName] = finalValue
+			}
+		}
+
+		// totalExecTime := atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME]
+		// execTimeInCache, exist := p.cache.Get(queryId.(string) + EXECUTION_TIME_SUFFIX)
+		// execTimeDelta := totalExecTime.(float64)
+		// if exist {
+		// 	execTimeDelta = totalExecTime.(float64) - execTimeInCache
+		// }
+		// if execTimeDelta > 0 {
+		// 	p.cache.Add(queryId.(string)+EXECUTION_TIME_SUFFIX, totalExecTime.(float64))
+		// 	atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME] = execTimeDelta
+		// } else {
+		// 	atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME] = 0.0
+		// }
+
+		// totalPlanTime := atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME]
+		// if totalPlanTime != nil {
+		// 	// in theory it would always be non-nil value.
+		// 	planTimeInCache, exist := p.cache.Get(queryId.(string) + PLAN_TIME_SUFFIX)
+		// 	planTimeDelta := totalPlanTime.(float64)
+		// 	if exist {
+		// 		planTimeDelta = totalPlanTime.(float64) - planTimeInCache
+		// 	}
+		// 	if planTimeDelta > 0 {
+		// 		p.cache.Add(queryId.(string)+PLAN_TIME_SUFFIX, planTimeDelta)
+		// 		atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME] = planTimeDelta
+		// 	} else {
+		// 		atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME] = 0.0
+		// 	}
+		// }
+
+		// calls := atts[DB_ATTRIBUTE_PREFIX+CALLS_COLUMN_NAME]
+		// if calls != nil {
+		// 	// in theory it would always be non-nil value.
+		// 	callsInRowCastedToFloat := float64(calls.(int64))
+		// 	callsInCache, exist := p.cache.Get(queryId.(string) + CALLS_SUFFIX)
+		// 	callsDelta := callsInRowCastedToFloat
+		// 	if exist {
+		// 		callsDelta = callsInRowCastedToFloat - callsInCache
+		// 	}
+		// 	if callsDelta > 0 {
+		// 		p.cache.Add(queryId.(string)+CALLS_SUFFIX, callsInRowCastedToFloat)
+		// 		atts[DB_ATTRIBUTE_PREFIX+CALLS_COLUMN_NAME] = int64(callsDelta)
+		// 	} else {
+		// 		atts[DB_ATTRIBUTE_PREFIX+CALLS_COLUMN_NAME] = int64(0)
+		// 	}
+		// }
+
+		// rows := atts[DB_ATTRIBUTE_PREFIX+ROWS_COLUMN_NAME]
+		// if rows != nil {
+		// 	// in theory it would always be non-nil value.
+		// 	rowsInRowCastedToFloat := float64(rows.(int64))
+		// 	rowsInCache, exist := p.cache.Get(queryId.(string) + ROWS_SUFFIX)
+		// 	rowsDelta := rowsInRowCastedToFloat
+		// 	if exist {
+		// 		rowsDelta = rowsInRowCastedToFloat - rowsInCache
+		// 	}
+		// 	if rowsDelta > 0 {
+		// 		p.cache.Add(queryId.(string)+ROWS_SUFFIX, rowsInRowCastedToFloat)
+		// 		atts[DB_ATTRIBUTE_PREFIX+ROWS_COLUMN_NAME] = int64(rowsDelta)
+		// 	} else {
+		// 		atts[DB_ATTRIBUTE_PREFIX+ROWS_COLUMN_NAME] = int64(0)
+		// 	}
+		// }
+		record := logRecords.AppendEmpty()
+		record.SetTimestamp(timestamp)
+		record.SetEventName("top query")
+		if err := record.Attributes().FromRaw(atts); err != nil {
+			mux.addPartial(err)
+			logger.Error("failed to read attributes from row", zap.Error(err))
+		}
+		record.Body().SetStr("top query")
 	}
 }
 
