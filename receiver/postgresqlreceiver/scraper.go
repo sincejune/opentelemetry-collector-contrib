@@ -202,7 +202,10 @@ func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient cl
 		record := logRecords.AppendEmpty()
 		record.SetTimestamp(timestamp)
 		record.SetEventName("query sample")
-		record.Attributes().FromRaw(atts)
+		if err := record.Attributes().FromRaw(atts); err != nil {
+			mux.addPartial(err)
+			logger.Error("failed to read attributes from row", zap.Error(err))
+		}
 		record.Body().SetStr("sample")
 	}
 }

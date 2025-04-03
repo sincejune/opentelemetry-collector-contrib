@@ -77,10 +77,6 @@ func createMetricsReceiver(
 	)
 }
 
-func setupLogQueries(cfg *Config) []string {
-	return []string{""}
-}
-
 // createLogsReceiver create a logs receiver based on provided config.
 func createLogsReceiver(
 	_ context.Context,

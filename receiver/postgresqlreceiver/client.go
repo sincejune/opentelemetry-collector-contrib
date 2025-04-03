@@ -788,15 +788,15 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 			currentAttributes[dbPrefix+col] = row[col]
 		}
 
-		client_port := 0
+		clientPort := 0
 		if row["client_port"] != "" {
-			client_port, err = strconv.Atoi(row["client_port"])
+			clientPort, err = strconv.Atoi(row["client_port"])
 			if err != nil {
 				logger.Warn("failed to convert client_port to int", zap.Error(err))
 				errs = append(errs, err)
 			}
 		}
-		currentAttributes["network.peer.port"] = client_port
+		currentAttributes["network.peer.port"] = clientPort
 		currentAttributes["network.peer.address"] = row["client_addrs"]
 		currentAttributes["db.query.text"] = row["query"]
 		currentAttributes["db.namespace"] = row["datname"]
