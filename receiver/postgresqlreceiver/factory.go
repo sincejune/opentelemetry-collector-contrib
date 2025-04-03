@@ -102,13 +102,18 @@ func createLogsReceiver(
 		return nil, err
 	}
 
-	opt := scraperhelper.AddFactoryWithConfig(
-		scraper.NewFactory(metadata.Type, nil,
-			scraper.WithLogs(func(context.Context, scraper.Settings, component.Config) (scraper.Logs, error) {
-				return s, nil
-			}, component.StabilityLevelAlpha)), nil)
+	opts := make([]scraperhelper.ControllerOption, 0)
+
+	if cfg.QuerySampleCollection.Enabled {
+		opt := scraperhelper.AddFactoryWithConfig(
+			scraper.NewFactory(metadata.Type, nil,
+				scraper.WithLogs(func(context.Context, scraper.Settings, component.Config) (scraper.Logs, error) {
+					return s, nil
+				}, component.StabilityLevelAlpha)), nil)
+		opts = append(opts, opt)
+	}
 
 	return scraperhelper.NewLogsController(
-		&cfg.ControllerConfig, params, logsConsumer, opt,
+		&cfg.ControllerConfig, params, logsConsumer, opts...,
 	)
 }
