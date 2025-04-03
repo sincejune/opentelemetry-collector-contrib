@@ -4,10 +4,13 @@
 package postgresqlreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/postgresqlreceiver"
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	_ "embed"
 	"errors"
 	"fmt"
+	"html/template"
 	"net"
 	"strconv"
 	"strings"
@@ -17,6 +20,9 @@ import (
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.uber.org/multierr"
+	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sqlquery"
 )
 
 const lagMetricsInSecondsFeatureGateID = "postgresqlreceiver.preciselagmetrics"
@@ -58,6 +64,7 @@ type client interface {
 	getIndexStats(ctx context.Context, database string) (map[indexIdentifer]indexStat, error)
 	listDatabases(ctx context.Context) ([]string, error)
 	getVersion(ctx context.Context) (string, error)
+	getQuerySamples(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error)
 }
 
 type postgreSQLClient struct {
@@ -734,4 +741,68 @@ func tableKey(database, schema, table string) tableIdentifier {
 
 func indexKey(database, schema, table, index string) indexIdentifer {
 	return indexIdentifer(fmt.Sprintf("%s|%s|%s|%s", database, schema, table, index))
+}
+
+//go:embed templates/querySampleTemplate.tmpl
+var querySampleTemplate string
+
+func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error) {
+	tmpl := template.Must(template.New("querySample").Option("missingkey=error").Parse(querySampleTemplate))
+	buf := bytes.Buffer{}
+
+	if err := tmpl.Execute(&buf, map[string]any{
+		"limit": limit,
+	}); err != nil {
+		logger.Error("failed to execute template", zap.Error(err))
+		return []map[string]any{}, fmt.Errorf("failed executing template: %w", err)
+	}
+
+	wrappedDb := sqlquery.NewDbClient(sqlquery.DbWrapper{Db: c.client}, buf.String(), logger, sqlquery.TelemetryConfig{})
+
+	rows, err := wrappedDb.QueryRows(ctx)
+	if err != nil {
+		if !errors.Is(err, sqlquery.ErrNullValueWarning) {
+			logger.Error("failed getting log rows", zap.Error(err))
+			return []map[string]any{}, fmt.Errorf("sqlServerScraperHelper failed getting log rows: %w", err)
+		}
+		// in case the sql returned rows contains null value, we just log a warning and continue
+		logger.Warn("problems encountered getting log rows", zap.Error(err))
+	}
+
+	errs := make([]error, 0)
+	finalAttributes := make([]map[string]any, 0)
+	dbPrefix := "postgresql."
+	for _, row := range rows {
+		logger.Info("query sample row", zap.Any("row", row))
+		currentAttributes := make(map[string]any)
+		simpleColumns := []string{
+			"client_hostname",
+			"query_start",
+			"wait_event_type",
+			"wait_event",
+			"query_id",
+			"backend_xid",
+		}
+
+		for _, col := range simpleColumns {
+			currentAttributes[dbPrefix+col] = row[col]
+		}
+
+		clientPort := 0
+		if row["client_port"] != "" {
+			clientPort, err = strconv.Atoi(row["client_port"])
+			if err != nil {
+				logger.Warn("failed to convert client_port to int", zap.Error(err))
+				errs = append(errs, err)
+			}
+		}
+		currentAttributes["network.peer.port"] = clientPort
+		currentAttributes["network.peer.address"] = row["client_addrs"]
+		currentAttributes["db.query.text"] = row["query"]
+		currentAttributes["db.namespace"] = row["datname"]
+		currentAttributes["db.system.name"] = "postgresql"
+		finalAttributes = append(finalAttributes, currentAttributes)
+	}
+
+	return finalAttributes, errors.Join(errs...)
 }

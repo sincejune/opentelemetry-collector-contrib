@@ -12,11 +12,14 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/tj/assert"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/testutil"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/postgresqlreceiver/internal/metadata"
 )
@@ -381,10 +384,46 @@ func TestScraperExcludeDatabase(t *testing.T) {
 	runTest(false, "exclude.yaml")
 }
 
+func TestScrapeLogs(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.Databases = []string{}
+	cfg.QuerySampleCollection.Enabled = true
+	factory := new(mockClientFactory)
+	factory.initMocks([]string{})
+
+	scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory)
+	actualLogs, err := scraper.scrapeQuerySamples(context.Background(), 1000)
+	assert.NoError(t, err)
+	expectedFile := filepath.Join("testdata", "scraper", "query-sample", "expected.yaml")
+	expectedLogs, err := golden.ReadLogs(expectedFile)
+	require.NoError(t, err)
+	errs := plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreTimestamp())
+	assert.NoError(t, errs)
+}
+
 type (
 	mockClientFactory struct{ mock.Mock }
 	mockClient        struct{ mock.Mock }
 )
+
+// getQuerySamples implements client.
+func (m *mockClient) getQuerySamples(_ context.Context, _ int64, _ *zap.Logger) ([]map[string]any, error) {
+	return []map[string]any{
+		{
+			"network.peer.port":          114514,
+			"network.peer.address":       "11.4.5.14",
+			"db.query.text":              "select * from pg_stat_activity",
+			"db.namespace":               "postgres",
+			"db.system.name":             "postgresql",
+			"postgresql.client_hostname": "otel",
+			"postgresql.query_start":     "2025-02-12T16:37:54.843+08:00",
+			"postgresql.wait_event_type": "",
+			"postgresql.wait_event":      "",
+			"postgresql.query_id":        "123131231231",
+			"postgresql.backend_xid":     "",
+		},
+	}, nil
+}
 
 var _ client = &mockClient{}
 
