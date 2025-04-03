@@ -771,13 +771,12 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 
 	errs := make([]error, 0)
 	finalAttributes := make([]map[string]any, 0)
+	dbPrefix := "postgresql."
 	for _, row := range rows {
 		logger.Info("query sample row", zap.Any("row", row))
 		currentAttributes := make(map[string]any)
 		simpleColumns := []string{
-			"client_addrs",
 			"client_hostname",
-			"client_port",
 			"query_start",
 			"wait_event_type",
 			"wait_event",
@@ -786,7 +785,7 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 		}
 
 		for _, col := range simpleColumns {
-			currentAttributes[col] = row[col]
+			currentAttributes[dbPrefix+col] = row[col]
 		}
 
 		client_port := 0
@@ -797,7 +796,8 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 				errs = append(errs, err)
 			}
 		}
-		currentAttributes["client_port"] = client_port
+		currentAttributes["network.peer.port"] = client_port
+		currentAttributes["network.peer.address"] = row["client_addrs"]
 		currentAttributes["db.query.text"] = row["query"]
 		currentAttributes["db.namespace"] = row["datname"]
 		currentAttributes["db.system.name"] = "postgresql"
