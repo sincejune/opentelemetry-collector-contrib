@@ -370,3 +370,6 @@ metrics:
       aggregation_temporality: cumulative
 tests:
   config:
+  goleak:
+    ignore:
+      any: "github.com/godbus/dbus.(*Conn).inWorker"
