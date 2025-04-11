@@ -33,7 +33,7 @@ func TestUnsuccessfulScrape(t *testing.T) {
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.Endpoint = "fake:11111"
 
-	scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, newDefaultClientFactory(cfg))
+	scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, newDefaultClientFactory(cfg), newCache(1))
 
 	actualMetrics, err := scraper.scrape(context.Background())
 	require.Error(t, err)
@@ -63,7 +63,7 @@ func TestScraper(t *testing.T) {
 		cfg.Metrics.PostgresqlSequentialScans.Enabled = true
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = true
 
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory, newCache(1))
 
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
@@ -115,7 +115,7 @@ func TestScraperNoDatabaseSingle(t *testing.T) {
 		require.False(t, cfg.Metrics.PostgresqlDatabaseLocks.Enabled)
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = true
 
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory, newCache(1))
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
 
@@ -139,7 +139,7 @@ func TestScraperNoDatabaseSingle(t *testing.T) {
 		cfg.Metrics.PostgresqlSequentialScans.Enabled = false
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = false
 
-		scraper = newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory)
+		scraper = newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, factory, newCache(1))
 		actualMetrics, err = scraper.scrape(context.Background())
 		require.NoError(t, err)
 
@@ -189,7 +189,7 @@ func TestScraperNoDatabaseMultipleWithoutPreciseLag(t *testing.T) {
 		cfg.Metrics.PostgresqlSequentialScans.Enabled = true
 		require.False(t, cfg.Metrics.PostgresqlDatabaseLocks.Enabled)
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = true
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory, newCache(1))
 
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
@@ -240,7 +240,7 @@ func TestScraperNoDatabaseMultiple(t *testing.T) {
 		cfg.Metrics.PostgresqlSequentialScans.Enabled = true
 		require.False(t, cfg.Metrics.PostgresqlDatabaseLocks.Enabled)
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = true
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory, newCache(1))
 
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestScraperWithResourceAttributeFeatureGate(t *testing.T) {
 		require.False(t, cfg.Metrics.PostgresqlDatabaseLocks.Enabled)
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = true
 
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory, newCache(1))
 
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
@@ -343,7 +343,7 @@ func TestScraperWithResourceAttributeFeatureGateSingle(t *testing.T) {
 		cfg.Metrics.PostgresqlSequentialScans.Enabled = true
 		require.False(t, cfg.Metrics.PostgresqlDatabaseLocks.Enabled)
 		cfg.Metrics.PostgresqlDatabaseLocks.Enabled = true
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory, newCache(1))
 
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
@@ -370,7 +370,7 @@ func TestScraperExcludeDatabase(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
 		cfg.ExcludeDatabases = []string{"open"}
 
-		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory)
+		scraper := newPostgreSQLScraper(receivertest.NewNopSettings(metadata.Type), cfg, &factory, newCache(1))
 
 		actualMetrics, err := scraper.scrape(context.Background())
 		require.NoError(t, err)
@@ -411,7 +411,7 @@ func TestScrapeLogs(t *testing.T) {
 	settings.TelemetrySettings = component.TelemetrySettings{
 		Logger: logger,
 	}
-	scraper := newPostgreSQLScraper(settings, cfg, factory)
+	scraper := newPostgreSQLScraper(settings, cfg, factory, newCache(1))
 	mock.ExpectQuery(expectedScrapeSampleQuery).WillReturnRows(sqlmock.NewRows(
 		[]string{"datname", "usename", "client_addrs", "client_hostname", "client_port", "query_start", "wait_event_type", "wait_event", "query_id", "pid", "application_name", "state", "query"},
 	).FromCSVString("postgres,otelu,11.4.5.14,otel,114514,2025-02-12T16:37:54.843+08:00,,,123131231231,1450,receiver,idle,select * from pg_stat_activity where id = 32"))
@@ -431,6 +431,11 @@ type (
 		db *sql.DB
 	}
 )
+
+// getTopQuery implements client.
+func (m *mockClient) getTopQuery(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error) {
+	panic("unimplemented")
+}
 
 // close implements postgreSQLClientFactory.
 func (m mockSimpleClientFactory) close() error {

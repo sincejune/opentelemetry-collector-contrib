@@ -1,6 +1,8 @@
 CREATE USER otelu WITH PASSWORD 'otelp';
 GRANT SELECT ON pg_stat_database TO otelu;
 GRANT pg_monitor TO otelu;
+CREATE EXTENSION pg_stat_statements;
+
 
 CREATE TABLE table1 (
     id serial PRIMARY KEY

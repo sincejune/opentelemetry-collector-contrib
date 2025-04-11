@@ -178,7 +178,7 @@ func TestScrapeLogsFromContainer(t *testing.T) {
 		TelemetrySettings: component.TelemetrySettings{
 			Logger: zap.Must(zap.NewProduction()),
 		},
-	}, &cfg, clientFactory)
+	}, &cfg, clientFactory, newCache(1))
 	plogs, err := ns.scrapeQuerySamples(context.Background(), 30)
 	assert.NoError(t, err)
 	logRecords := plogs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()

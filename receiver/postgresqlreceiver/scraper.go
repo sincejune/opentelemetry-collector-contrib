@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/collector/scraper/scrapererror"
 	"go.uber.org/zap"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/postgresqlreceiver/internal/metadata"
 )
 
@@ -41,7 +42,7 @@ type postgreSQLScraper struct {
 	clientFactory postgreSQLClientFactory
 	mb            *metadata.MetricsBuilder
 	excludes      map[string]struct{}
-
+	cache         *lru.Cache[string, float64]
 	// if enabled, uses a separated attribute for the schema
 	separateSchemaAttr bool
 }
@@ -73,6 +74,7 @@ func newPostgreSQLScraper(
 	settings receiver.Settings,
 	config *Config,
 	clientFactory postgreSQLClientFactory,
+	cache *lru.Cache[string, float64],
 ) *postgreSQLScraper {
 	excludes := make(map[string]struct{})
 	for _, db := range config.ExcludeDatabases {
@@ -92,6 +94,7 @@ func newPostgreSQLScraper(
 		clientFactory: clientFactory,
 		mb:            metadata.NewMetricsBuilder(config.MetricsBuilderConfig, settings),
 		excludes:      excludes,
+		cache:         cache,
 
 		separateSchemaAttr: separateSchemaAttr,
 	}
@@ -189,6 +192,31 @@ func (p *postgreSQLScraper) scrapeQuerySamples(ctx context.Context, maxRowsPerQu
 	return logs, nil
 }
 
+func (p *postgreSQLScraper) scrapeTopQuery(ctx context.Context, maxRowsPerQuery int64) (plog.Logs, error) {
+	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
+
+	scopedLog := resourceLog.ScopeLogs().AppendEmpty()
+	scopedLog.Scope().SetName(metadata.ScopeName)
+	scopedLog.Scope().SetVersion("v0.0.1")
+
+	dbClient, err := p.clientFactory.getClient(defaultPostgreSQLDatabase)
+	if err != nil {
+		p.logger.Error("Failed to initialize connection to postgres", zap.Error(err))
+		return logs, err
+	}
+
+	var errs errsMux
+
+	logRecords := scopedLog.LogRecords()
+
+	p.collectTopQuery(ctx, dbClient, &logRecords, maxRowsPerQuery, &errs, p.logger)
+
+	defer dbClient.Close()
+
+	return logs, nil
+}
+
 func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient client, logRecords *plog.LogRecordSlice, limit int64, mux *errsMux, logger *zap.Logger) {
 	timestamp := pcommon.NewTimestampFromTime(time.Now())
 
@@ -206,6 +234,62 @@ func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient cl
 			logger.Error("failed to read attributes from row", zap.Error(err))
 		}
 		record.Body().SetStr("sample")
+	}
+}
+
+func (p *postgreSQLScraper) collectTopQuery(ctx context.Context, dbClient client, logRecords *plog.LogRecordSlice, limit int64, mux *errsMux, logger *zap.Logger) {
+	timestamp := pcommon.NewTimestampFromTime(time.Now())
+	logger.Info("top query running")
+
+	attributes, err := dbClient.getTopQuery(ctx, limit, logger)
+	if err != nil {
+		logger.Error("failed to get top query", zap.Error(err))
+		mux.addPartial(err)
+		return
+	}
+	for _, atts := range attributes {
+		queryId := atts[DB_ATTRIBUTE_PREFIX+QUERYID_COLUMN_NAME]
+		totalExecTime := atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME]
+		logger.Info("atts", zap.Any("atts", atts))
+		if queryId == nil || totalExecTime == nil {
+			// this should not happen, but in case
+			logger.Error("queryId or totalExecTime is nil", zap.Any("atts", atts))
+			mux.addPartial(fmt.Errorf("queryId or totalExecTime is nil"))
+			continue
+		}
+		execTimeInCache, exist := p.cache.Get(queryId.(string) + "-execution-time")
+		execTimeDelta := totalExecTime.(float64)
+		if exist {
+			execTimeDelta = totalExecTime.(float64) - execTimeInCache
+		}
+		if execTimeDelta > 0 {
+			p.cache.Add(queryId.(string)+"-execution-time", totalExecTime.(float64))
+		} else {
+			logger.Info("total exec time", zap.Float64("totalExecTime", totalExecTime.(float64)))
+			logger.Info("skipping query", zap.String("queryId", queryId.(string)), zap.Float64("execTimeDelta", execTimeDelta))
+			continue
+		}
+		atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME] = execTimeDelta
+
+		totalPlanTime := atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME]
+		if totalPlanTime != nil {
+			// in theory it would always be non-nil value.
+			planTimeInCache, exist := p.cache.Get(queryId.(string) + "-plan-time")
+			planTimeDelta := totalPlanTime.(float64)
+			if exist {
+				planTimeDelta = totalPlanTime.(float64) - planTimeInCache
+			}
+			p.cache.Add(queryId.(string)+"-plan-time", planTimeDelta)
+			atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME] = planTimeDelta
+		}
+		record := logRecords.AppendEmpty()
+		record.SetTimestamp(timestamp)
+		record.SetEventName("top query")
+		if err := record.Attributes().FromRaw(atts); err != nil {
+			mux.addPartial(err)
+			logger.Error("failed to read attributes from row", zap.Error(err))
+		}
+		record.Body().SetStr("top query")
 	}
 }
 
