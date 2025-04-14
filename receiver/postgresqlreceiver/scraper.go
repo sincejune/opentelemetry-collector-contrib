@@ -38,12 +38,13 @@ var separateSchemaAttrGate = featuregate.GlobalRegistry().MustRegister(
 )
 
 type postgreSQLScraper struct {
-	logger        *zap.Logger
-	config        *Config
-	clientFactory postgreSQLClientFactory
-	mb            *metadata.MetricsBuilder
-	excludes      map[string]struct{}
-	cache         *lru.Cache[string, float64]
+	logger               *zap.Logger
+	config               *Config
+	clientFactory        postgreSQLClientFactory
+	mb                   *metadata.MetricsBuilder
+	excludes             map[string]struct{}
+	cache                *lru.Cache[string, float64]
+	newestQueryTimeStamp float64
 	// if enabled, uses a separated attribute for the schema
 	separateSchemaAttr bool
 }
@@ -221,7 +222,8 @@ func (p *postgreSQLScraper) scrapeTopQuery(ctx context.Context, maxRowsPerQuery 
 func (p *postgreSQLScraper) collectQuerySamples(ctx context.Context, dbClient client, logRecords *plog.LogRecordSlice, limit int64, mux *errsMux, logger *zap.Logger) {
 	timestamp := pcommon.NewTimestampFromTime(time.Now())
 
-	attributes, err := dbClient.getQuerySamples(ctx, limit, logger)
+	attributes, newestQueryTimestamp, err := dbClient.getQuerySamples(ctx, limit, p.newestQueryTimeStamp, logger)
+	p.newestQueryTimeStamp = newestQueryTimestamp
 	if err != nil {
 		mux.addPartial(err)
 		return
@@ -309,68 +311,6 @@ func (p *postgreSQLScraper) collectTopQuery(ctx context.Context, dbClient client
 			}
 		}
 
-		// totalExecTime := atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME]
-		// execTimeInCache, exist := p.cache.Get(queryId.(string) + EXECUTION_TIME_SUFFIX)
-		// execTimeDelta := totalExecTime.(float64)
-		// if exist {
-		// 	execTimeDelta = totalExecTime.(float64) - execTimeInCache
-		// }
-		// if execTimeDelta > 0 {
-		// 	p.cache.Add(queryId.(string)+EXECUTION_TIME_SUFFIX, totalExecTime.(float64))
-		// 	atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME] = execTimeDelta
-		// } else {
-		// 	atts[DB_ATTRIBUTE_PREFIX+TOTAL_EXEC_TIME_COLUMN_NAME] = 0.0
-		// }
-
-		// totalPlanTime := atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME]
-		// if totalPlanTime != nil {
-		// 	// in theory it would always be non-nil value.
-		// 	planTimeInCache, exist := p.cache.Get(queryId.(string) + PLAN_TIME_SUFFIX)
-		// 	planTimeDelta := totalPlanTime.(float64)
-		// 	if exist {
-		// 		planTimeDelta = totalPlanTime.(float64) - planTimeInCache
-		// 	}
-		// 	if planTimeDelta > 0 {
-		// 		p.cache.Add(queryId.(string)+PLAN_TIME_SUFFIX, planTimeDelta)
-		// 		atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME] = planTimeDelta
-		// 	} else {
-		// 		atts[DB_ATTRIBUTE_PREFIX+TOTAL_PLAN_TIME_COLUMN_NAME] = 0.0
-		// 	}
-		// }
-
-		// calls := atts[DB_ATTRIBUTE_PREFIX+CALLS_COLUMN_NAME]
-		// if calls != nil {
-		// 	// in theory it would always be non-nil value.
-		// 	callsInRowCastedToFloat := float64(calls.(int64))
-		// 	callsInCache, exist := p.cache.Get(queryId.(string) + CALLS_SUFFIX)
-		// 	callsDelta := callsInRowCastedToFloat
-		// 	if exist {
-		// 		callsDelta = callsInRowCastedToFloat - callsInCache
-		// 	}
-		// 	if callsDelta > 0 {
-		// 		p.cache.Add(queryId.(string)+CALLS_SUFFIX, callsInRowCastedToFloat)
-		// 		atts[DB_ATTRIBUTE_PREFIX+CALLS_COLUMN_NAME] = int64(callsDelta)
-		// 	} else {
-		// 		atts[DB_ATTRIBUTE_PREFIX+CALLS_COLUMN_NAME] = int64(0)
-		// 	}
-		// }
-
-		// rows := atts[DB_ATTRIBUTE_PREFIX+ROWS_COLUMN_NAME]
-		// if rows != nil {
-		// 	// in theory it would always be non-nil value.
-		// 	rowsInRowCastedToFloat := float64(rows.(int64))
-		// 	rowsInCache, exist := p.cache.Get(queryId.(string) + ROWS_SUFFIX)
-		// 	rowsDelta := rowsInRowCastedToFloat
-		// 	if exist {
-		// 		rowsDelta = rowsInRowCastedToFloat - rowsInCache
-		// 	}
-		// 	if rowsDelta > 0 {
-		// 		p.cache.Add(queryId.(string)+ROWS_SUFFIX, rowsInRowCastedToFloat)
-		// 		atts[DB_ATTRIBUTE_PREFIX+ROWS_COLUMN_NAME] = int64(rowsDelta)
-		// 	} else {
-		// 		atts[DB_ATTRIBUTE_PREFIX+ROWS_COLUMN_NAME] = int64(0)
-		// 	}
-		// }
 		record := logRecords.AppendEmpty()
 		record.SetTimestamp(timestamp)
 		record.SetEventName("top query")

@@ -10,10 +10,10 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"html/template"
 	"net"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"go.opentelemetry.io/collector/config/confignet"
@@ -64,7 +64,7 @@ type client interface {
 	getIndexStats(ctx context.Context, database string) (map[indexIdentifer]indexStat, error)
 	listDatabases(ctx context.Context) ([]string, error)
 	getVersion(ctx context.Context) (string, error)
-	getQuerySamples(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error)
+	getQuerySamples(ctx context.Context, limit int64, newestQuery float64, logger *zap.Logger) ([]map[string]any, float64, error)
 	getTopQuery(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error)
 }
 
@@ -747,7 +747,7 @@ func indexKey(database, schema, table, index string) indexIdentifer {
 //go:embed templates/querySampleTemplate.tmpl
 var querySampleTemplate string
 
-func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, logger *zap.Logger) ([]map[string]any, error) {
+func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, newestQueryTimeStamp float64, logger *zap.Logger) ([]map[string]any, float64, error) {
 	tmpl := template.Must(template.New("querySample").Option("missingkey=error").Parse(querySampleTemplate))
 	buf := bytes.Buffer{}
 
@@ -755,10 +755,11 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 	// For instance, if from the last sample query we got queries executed between 8:00 ~ 8:15,
 	// in this query, we should only gather query after 8:15
 	if err := tmpl.Execute(&buf, map[string]any{
-		"limit": limit,
+		"limit":                limit,
+		"newestQueryTimeStamp": newestQueryTimeStamp,
 	}); err != nil {
 		logger.Error("failed to execute template", zap.Error(err))
-		return []map[string]any{}, fmt.Errorf("failed executing template: %w", err)
+		return []map[string]any{}, newestQueryTimeStamp, fmt.Errorf("failed executing template: %w", err)
 	}
 
 	wrappedDb := sqlquery.NewDbClient(sqlquery.DbWrapper{Db: c.client}, buf.String(), logger, sqlquery.TelemetryConfig{})
@@ -767,7 +768,7 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 	if err != nil {
 		if !errors.Is(err, sqlquery.ErrNullValueWarning) {
 			logger.Error("failed getting log rows", zap.Error(err))
-			return []map[string]any{}, fmt.Errorf("getQuerySamples failed getting log rows: %w", err)
+			return []map[string]any{}, newestQueryTimeStamp, fmt.Errorf("getQuerySamples failed getting log rows: %w", err)
 		}
 		// in case the sql returned rows contains null value, we just log a warning and continue
 		logger.Warn("problems encountered getting log rows", zap.Error(err))
@@ -813,6 +814,17 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 				errs = append(errs, err)
 			}
 		}
+		_query_start_timestamp := float64(0)
+		if row["_query_start_timestamp"] != "" {
+			_query_start_timestamp, err = strconv.ParseFloat(row["_query_start_timestamp"], 64)
+			if err != nil {
+				logger.Warn("failed to convert _query_start_timestamp", zap.Error(err))
+				errs = append(errs, err)
+			}
+		}
+		if _query_start_timestamp > newestQueryTimeStamp {
+			newestQueryTimeStamp = _query_start_timestamp
+		}
 		// TODO: check if the query is truncated.
 		obfuscated, err := obfuscateSQL(row["query"])
 		if err != nil {
@@ -829,7 +841,7 @@ func (c *postgreSQLClient) getQuerySamples(ctx context.Context, limit int64, log
 		finalAttributes = append(finalAttributes, currentAttributes)
 	}
 
-	return finalAttributes, errors.Join(errs...)
+	return finalAttributes, newestQueryTimeStamp, errors.Join(errs...)
 }
 
 func convertMillisecondToSecond(column string, value string, logger *zap.Logger) (any, error) {
