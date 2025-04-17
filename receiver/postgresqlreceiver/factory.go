@@ -114,6 +114,8 @@ func createLogsReceiver(
 	opts := make([]scraperhelper.ControllerOption, 0)
 
 	if cfg.QuerySampleCollection.Enabled {
+		// query sample collection does not need cache, but we do not want to make it
+		// nil, so create one size 1 cache as a placeholder.
 		ns := newPostgreSQLScraper(params, cfg, clientFactory, newCache(1))
 		s, err := scraper.NewLogs(func(ctx context.Context) (plog.Logs, error) {
 			return ns.scrapeQuerySamples(ctx, cfg.QuerySampleCollection.MaxRowsPerQuery)
