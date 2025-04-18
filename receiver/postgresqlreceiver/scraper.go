@@ -323,6 +323,7 @@ func (p *postgreSQLScraper) collectTopQuery(ctx context.Context, dbClient client
 			mux.addPartial(err)
 			logger.Error("failed to read attributes from row", zap.Error(err))
 		}
+		record.Attributes().PutStr("db.system.name", "postgresql")
 		record.Body().SetStr("top query")
 	}
 }

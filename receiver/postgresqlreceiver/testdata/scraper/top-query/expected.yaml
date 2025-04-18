@@ -4,6 +4,9 @@ resourceLogs:
     scopeLogs:
       - logRecords:
           - attributes:
+              - key: db.system.name
+                value:
+                  stringValue: postgresql
               - key: db.namespace
                 value:
                   stringValue: postgres
