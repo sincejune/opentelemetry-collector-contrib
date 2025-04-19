@@ -880,7 +880,7 @@ func (c *postgreSQLClient) getTopQuery(ctx context.Context, limit int64, logger 
 	if err != nil {
 		if !errors.Is(err, sqlquery.ErrNullValueWarning) {
 			logger.Error("failed getting log rows", zap.Error(err))
-			return []map[string]any{}, fmt.Errorf("getQuerySamples failed getting log rows: %w", err)
+			return []map[string]any{}, fmt.Errorf("getTopQuery failed getting log rows: %w", err)
 		}
 		// in case the sql returned rows contains null value, we just log a warning and continue
 		logger.Warn("problems encountered getting log rows", zap.Error(err))
