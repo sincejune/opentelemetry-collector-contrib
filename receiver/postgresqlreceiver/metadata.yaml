@@ -373,4 +373,7 @@ tests:
   config:
   goleak:
     ignore:
-      any: "github.com/godbus/dbus.(*Conn).inWorker"
+      any:
+        - "github.com/godbus/dbus.(*Conn).inWorker"
+        - github.com/snowflakedb/gosnowflake.initOCSPCacheClearer.func1
+        - github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1
