@@ -31,8 +31,13 @@ resource_attributes:
     description: Server port number.
     enabled: false
     type: int
+  host.name:
+    description: The host name of SQL Server
+    enabled: true
+    type: string
 
 attributes:
+  # attributes for metrics
   page.operations:
     name_override: type
     description: The page operation types.
@@ -71,7 +76,191 @@ attributes:
     description: The status of the tempdb space usage.
     type: string
     enum: [free, used]
+  # attributes for events
+  ## top query
+  sqlserver.total_worker_time:
+    description: total worker time
+    type: double
+  db.query.text:
+    description: db query text
+    type: string
+  sqlserver.execution_count:
+    description: execution count
+    type: int
+  sqlserver.total_logical_reads:
+    description: total_logical_reads
+    type: int
+  sqlserver.total_logical_writes:
+    description: total_logical_writes
+    type: int
+  sqlserver.total_physical_reads:
+    description: total_physical_reads
+    type: int
+  sqlserver.query_hash:
+    description: query_hash
+    type: string
+  sqlserver.query_plan:
+    description: query plan
+    type: string
+  sqlserver.query_plan_hash:
+    description: query_plan_hash
+    type: string
+  sqlserver.total_rows:
+    description: time
+    type: int
+  sqlserver.total_elapsed_time:
+    description: time
+    type: double
+  sqlserver.total_grant_kb:
+    description: time
+    type: int
+  server.address:
+    description: address
+    type: string
+  server.port:
+    description: port
+    type: int
+  db.server.name:
+    description: db.server.name
+    type: string
+  ### sample query
+  client.port:
+    description: client.port
+    type: int
+  db.namespace:
+    description: db.namespace
+    type: string
 
+  db.system.name:
+    description: db.system.name
+    type: string
+  network.peer.address:
+    description: network.peer.address
+    type: string
+  network.peer.port:
+    description: a
+    type: int
+  sqlserver.blocking_session_id:
+    description: a
+    type: int
+  sqlserver.command:
+    description: a
+    type: string
+  sqlserver.cpu_time:
+    description: a
+    type: double
+  sqlserver.deadlock_priority:
+    description: deadlock_priority
+    type: int
+  sqlserver.estimated_completion_time:
+    description: estimated_completion_time
+    type: double
+  sqlserver.lock_timeout:
+    description: lock_timeout
+    type: double
+  sqlserver.logical_reads:
+    description: logical_reads
+    type: int
+  sqlserver.open_transaction_count:
+    description: open_transaction_count
+    type: int
+  sqlserver.percent_complete:
+    description: percent_complete
+    type: double
+  sqlserver.query_start:
+    description: query start
+    type: string
+  sqlserver.reads:
+    description: reads
+    type: int
+  sqlserver.request_status:
+    description: status
+    type: string
+  sqlserver.row_count:
+    description: row
+    type: int
+  sqlserver.session_id:
+    description: sessionid
+    type: int
+  sqlserver.transaction_id:
+    description: tid
+    type: int
+  sqlserver.transaction_isolation_level:
+    description: tlevel
+    type: int
+  user.name:
+    description: user.name
+    type: string
+  sqlserver.wait_resource:
+    description: wait resource
+    type: string
+  sqlserver.wait_time:
+    description: wait time
+    type: double
+  sqlserver.wait_type:
+    description: wait type
+    type: string
+  sqlserver.writes:
+    description: writes
+    type: int
+  client.address:
+    description: client.address
+    type: string
+events:
+  db.server.top_query:
+    enabled: true
+    description: top query
+    attributes:
+      - sqlserver.total_worker_time
+      - db.query.text
+      - sqlserver.execution_count
+      - sqlserver.total_logical_reads
+      - sqlserver.total_logical_writes
+      - sqlserver.total_physical_reads
+      - sqlserver.query_hash
+      - sqlserver.query_plan
+      - sqlserver.query_plan_hash
+      - sqlserver.total_rows
+      - sqlserver.total_elapsed_time
+      - sqlserver.total_grant_kb
+      - server.address
+      - server.port
+      - db.server.name
+  db.server.query_sample:
+    enabled: true
+    description: db server top query
+    attributes:
+      - client.port
+      - db.namespace
+      - db.query.text
+      - db.system.name
+      - network.peer.address
+      - network.peer.port
+      - sqlserver.blocking_session_id
+      - sqlserver.command
+      - sqlserver.cpu_time
+      - sqlserver.deadlock_priority
+      - sqlserver.estimated_completion_time
+      - sqlserver.lock_timeout
+      - sqlserver.logical_reads
+      - sqlserver.open_transaction_count
+      - sqlserver.percent_complete
+      - sqlserver.query_hash
+      - sqlserver.query_plan_hash
+      - sqlserver.query_start
+      - sqlserver.reads
+      - sqlserver.request_status
+      - sqlserver.row_count
+      - sqlserver.session_id
+      - sqlserver.total_elapsed_time
+      - sqlserver.transaction_id
+      - sqlserver.transaction_isolation_level
+      - user.name
+      - sqlserver.wait_resource
+      - sqlserver.wait_time
+      - sqlserver.wait_type
+      - sqlserver.writes
+      - client.address
 metrics:
   sqlserver.user.connection.count:
     enabled: true
@@ -415,7 +604,9 @@ metrics:
     unit: “KB”
     gauge:
       value_type: double
-    attributes: []  
+    attributes: []
+
+
 
 tests:
   config:
