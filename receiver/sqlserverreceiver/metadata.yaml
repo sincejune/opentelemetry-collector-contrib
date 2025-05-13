@@ -31,8 +31,13 @@ resource_attributes:
     description: Server port number.
     enabled: false
     type: int
+  host.name:
+    description: The host name of SQL Server
+    enabled: true
+    type: string
 
 attributes:
+  # attributes for metrics
   page.operations:
     name_override: type
     description: The page operation types.
@@ -71,7 +76,190 @@ attributes:
     description: The status of the tempdb space usage.
     type: string
     enum: [free, used]
-
+  # attributes for events
+  ## top query
+  sqlserver.total_worker_time:
+    description: Total time spent by workers executing queries on the SQL Server.
+    type: double
+  db.query.text:
+    description: The text of the database query being executed.
+    type: string
+  sqlserver.execution_count:
+    description: The number of times the query has been executed.
+    type: int
+  sqlserver.total_logical_reads:
+    description: The total number of logical reads performed by the query.
+    type: int
+  sqlserver.total_logical_writes:
+    description: The total number of logical writes performed by the query.
+    type: int
+  sqlserver.total_physical_reads:
+    description: The total number of physical reads performed by the query.
+    type: int
+  sqlserver.query_hash:
+    description: A hash representing the query text for tracking query performance.
+    type: string
+  sqlserver.query_plan:
+    description: The query execution plan used by the SQL Server.
+    type: string
+  sqlserver.query_plan_hash:
+    description: A hash representing the query execution plan for tracking performance.
+    type: string
+  sqlserver.total_rows:
+    description: The total number of rows returned by the query.
+    type: int
+  sqlserver.total_elapsed_time:
+    description: The total elapsed time taken by the query execution, in milliseconds.
+    type: double
+  sqlserver.total_grant_kb:
+    description: The total memory grant for the query, in kilobytes.
+    type: int
+  server.address:
+    description: The network address of the server hosting the database.
+    type: string
+  server.port:
+    description: The port number on which the server is listening.
+    type: int
+  db.server.name:
+    description: The name of the server hosting the database.
+    type: string
+  ### sample query
+  client.port:
+    description: The port number used by the client to connect to the server.
+    type: int
+  db.namespace:
+    description: The namespace or schema of the database being accessed.
+    type: string
+  db.system.name:
+    description: The name of the database management system (e.g., SQL Server).
+    type: string
+  network.peer.address:
+    description: The network address of the peer in the database connection.
+    type: string
+  network.peer.port:
+    description: The port number of the peer in the database connection.
+    type: int
+  sqlserver.blocking_session_id:
+    description: The session ID of a blocking session causing query delays.
+    type: int
+  sqlserver.command:
+    description: The command currently being executed by the SQL Server session.
+    type: string
+  sqlserver.cpu_time:
+    description: The total CPU time consumed by the query, in milliseconds.
+    type: double
+  sqlserver.deadlock_priority:
+    description: The priority level of a session involved in a deadlock.
+    type: int
+  sqlserver.estimated_completion_time:
+    description: The estimated time for the query to complete, in milliseconds.
+    type: double
+  sqlserver.lock_timeout:
+    description: The timeout duration for acquiring a lock, in milliseconds.
+    type: double
+  sqlserver.logical_reads:
+    description: The number of logical reads performed during the query execution.
+    type: int
+  sqlserver.open_transaction_count:
+    description: The number of open transactions for the current session.
+    type: int
+  sqlserver.percent_complete:
+    description: The percentage of query or operation completion.
+    type: double
+  sqlserver.query_start:
+    description: The timestamp when the query started execution.
+    type: string
+  sqlserver.reads:
+    description: The total number of reads performed by the query.
+    type: int
+  sqlserver.request_status:
+    description: The current status of the request (e.g., running, suspended).
+    type: string
+  sqlserver.row_count:
+    description: The total number of rows affected or returned by the query.
+    type: int
+  sqlserver.session_id:
+    description: The unique session ID assigned by the SQL Server.
+    type: int
+  sqlserver.transaction_id:
+    description: The unique identifier for the transaction.
+    type: int
+  sqlserver.transaction_isolation_level:
+    description: The isolation level of the current transaction (e.g., READ COMMITTED).
+    type: int
+  user.name:
+    description: The name of the user executing the query or operation.
+    type: string
+  sqlserver.wait_resource:
+    description: The resource for which the session is waiting.
+    type: string
+  sqlserver.wait_time:
+    description: The time spent waiting for the resource, in milliseconds.
+    type: double
+  sqlserver.wait_type:
+    description: The type of wait experienced by the session (e.g., LOCK, LATCH).
+    type: string
+  sqlserver.writes:
+    description: The total number of writes performed by the query.
+    type: int
+  client.address:
+    description: The network address of the client connecting to the database.
+    type: string
+events:
+  db.server.top_query:
+    enabled: true
+    description: top query
+    attributes:
+      - sqlserver.total_worker_time
+      - db.query.text
+      - sqlserver.execution_count
+      - sqlserver.total_logical_reads
+      - sqlserver.total_logical_writes
+      - sqlserver.total_physical_reads
+      - sqlserver.query_hash
+      - sqlserver.query_plan
+      - sqlserver.query_plan_hash
+      - sqlserver.total_rows
+      - sqlserver.total_elapsed_time
+      - sqlserver.total_grant_kb
+      - server.address
+      - server.port
+      - db.server.name
+  db.server.query_sample:
+    enabled: true
+    description: db server top query
+    attributes:
+      - client.port
+      - db.namespace
+      - db.query.text
+      - db.system.name
+      - network.peer.address
+      - network.peer.port
+      - sqlserver.blocking_session_id
+      - sqlserver.command
+      - sqlserver.cpu_time
+      - sqlserver.deadlock_priority
+      - sqlserver.estimated_completion_time
+      - sqlserver.lock_timeout
+      - sqlserver.logical_reads
+      - sqlserver.open_transaction_count
+      - sqlserver.percent_complete
+      - sqlserver.query_hash
+      - sqlserver.query_plan_hash
+      - sqlserver.query_start
+      - sqlserver.reads
+      - sqlserver.request_status
+      - sqlserver.row_count
+      - sqlserver.session_id
+      - sqlserver.total_elapsed_time
+      - sqlserver.transaction_id
+      - sqlserver.transaction_isolation_level
+      - user.name
+      - sqlserver.wait_resource
+      - sqlserver.wait_time
+      - sqlserver.wait_type
+      - sqlserver.writes
+      - client.address
 metrics:
   sqlserver.user.connection.count:
     enabled: true
@@ -415,7 +603,9 @@ metrics:
     unit: “KB”
     gauge:
       value_type: double
-    attributes: []  
+    attributes: []
+
+
 
 tests:
   config:
