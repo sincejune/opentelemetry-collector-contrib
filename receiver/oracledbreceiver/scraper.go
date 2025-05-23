@@ -107,6 +107,21 @@ func (s *oracleScraper) start(context.Context, component.Host) error {
 	return nil
 }
 
+// Dummy function to test unit test coverage reports. Do not Merge this PR!
+func (s *oracleScraper) start2(context.Context, component.Host) error {
+	s.startTime = pcommon.NewTimestampFromTime(time.Now())
+	var err error
+	s.db, err = s.dbProviderFunc()
+	if err != nil {
+		return fmt.Errorf("failed to open db connection: %w", err)
+	}
+	s.statsClient = s.clientProviderFunc(s.db, statsSQL, s.logger)
+	s.sessionCountClient = s.clientProviderFunc(s.db, sessionCountSQL, s.logger)
+	s.systemResourceLimitsClient = s.clientProviderFunc(s.db, systemResourceLimitsSQL, s.logger)
+	s.tablespaceUsageClient = s.clientProviderFunc(s.db, tablespaceUsageSQL, s.logger)
+	return nil
+}
+
 func (s *oracleScraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	s.logger.Debug("Begin scrape")
 
