@@ -64,3 +64,24 @@ func createMetricsReceiver(
 		scraperhelper.AddScraper(metadata.Type, s),
 	)
 }
+
+func createLogsReceiver(
+	_ context.Context,
+	params receiver.Settings,
+	rConf component.Config,
+	consumer consumer.Logs,
+) (receiver.Logs, error) {
+	cfg := rConf.(*Config)
+
+	ns := newMySQLScraper(params, cfg)
+	s, err := scraper.NewLogs(ns.scrape, scraper.WithStart(ns.start),
+		scraper.WithShutdown(ns.shutdown))
+	if err != nil {
+		return nil, err
+	}
+
+	return scraperhelper.NewLogsController(
+		&cfg.ControllerConfig, params, consumer,
+		scraperhelper.AddScraper(metadata.Type, s),
+	)
+}

@@ -643,6 +643,27 @@ The number of hits, misses or overflows for open tables cache lookups.
 | ---- | ----------- | ------ |
 | status | The status of cache access. | Str: ``hit``, ``miss``, ``overflow`` |
 
+## Default Events
+
+The following events are emitted by default. Each of them can be disabled by applying the following configuration:
+
+```yaml
+events:
+  <event_name>:
+    enabled: false
+```
+
+### db.server.query_sample
+
+query sample event
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| db.system.name | The name of the database system. | Str: ``mysql`` |
+| db.query.text | The text of the executed query. | Any Str |
+
 ## Resource Attributes
 
 | Name | Description | Values | Enabled |
