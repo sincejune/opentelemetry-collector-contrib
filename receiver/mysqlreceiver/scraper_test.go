@@ -169,6 +169,11 @@ type mockClient struct {
 	replicaStatusFile           string
 }
 
+func (c *mockClient) getQuerySamples() ([]QuerySample, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func readFile(fname string) (map[string]string, error) {
 	stats := map[string]string{}
 	file, err := os.Open(filepath.Join("testdata", "scraper", fname+".txt"))

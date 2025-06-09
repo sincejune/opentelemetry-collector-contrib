@@ -18,7 +18,7 @@ type eventDbServerQuerySample struct {
 	config EventConfig         // event config provided by user.
 }
 
-func (e *eventDbServerQuerySample) recordEvent(ctx context.Context, timestamp pcommon.Timestamp, dbSystemNameAttributeValue string, dbQueryTextAttributeValue string) {
+func (e *eventDbServerQuerySample) recordEvent(ctx context.Context, timestamp pcommon.Timestamp, dbSystemNameAttributeValue string, mysqlCurrentSchemaAttributeValue string, mysqlSQLTextAttributeValue string, mysqlDigestAttributeValue string, mysqlDigestTextAttributeValue string, mysqlEndEventIDAttributeValue int64, mysqlTimerStartAttributeValue float64, mysqlUptimeAttributeValue string, mysqlTimerEndAttributeValue float64, mysqlTimerWaitAttributeValue float64, mysqlLockTimeAttributeValue float64, mysqlRowsAffectedAttributeValue int64, mysqlRowsSentAttributeValue int64, mysqlRowsExaminedAttributeValue int64, mysqlSelectFullJoinAttributeValue int64, mysqlSelectFullRangeJoinAttributeValue int64, mysqlSelectRangeAttributeValue int64, mysqlSelectRangeCheckAttributeValue int64, mysqlSelectScanAttributeValue int64, mysqlSortMergePassesAttributeValue int64, mysqlSortRangeAttributeValue int64, mysqlSortRowsAttributeValue int64, mysqlSortScanAttributeValue int64, mysqlNoIndexUsedAttributeValue int64, mysqlNoGoodIndexUsedAttributeValue int64, mysqlProcesslistUserAttributeValue string, mysqlProcesslistHostAttributeValue string, mysqlProcesslistDbAttributeValue string) {
 	if !e.config.Enabled {
 		return
 	}
@@ -32,7 +32,33 @@ func (e *eventDbServerQuerySample) recordEvent(ctx context.Context, timestamp pc
 	}
 
 	lr.Attributes().PutStr("db.system.name", dbSystemNameAttributeValue)
-	lr.Attributes().PutStr("db.query.text", dbQueryTextAttributeValue)
+	lr.Attributes().PutStr("mysql.current_schema", mysqlCurrentSchemaAttributeValue)
+	lr.Attributes().PutStr("mysql.sql_text", mysqlSQLTextAttributeValue)
+	lr.Attributes().PutStr("mysql.digest", mysqlDigestAttributeValue)
+	lr.Attributes().PutStr("mysql.digest_text", mysqlDigestTextAttributeValue)
+	lr.Attributes().PutInt("mysql.end_event_id", mysqlEndEventIDAttributeValue)
+	lr.Attributes().PutDouble("mysql.timer_start", mysqlTimerStartAttributeValue)
+	lr.Attributes().PutStr("mysql.uptime", mysqlUptimeAttributeValue)
+	lr.Attributes().PutDouble("mysql.timer_end", mysqlTimerEndAttributeValue)
+	lr.Attributes().PutDouble("mysql.timer_wait", mysqlTimerWaitAttributeValue)
+	lr.Attributes().PutDouble("mysql.lock_time", mysqlLockTimeAttributeValue)
+	lr.Attributes().PutInt("mysql.rows_affected", mysqlRowsAffectedAttributeValue)
+	lr.Attributes().PutInt("mysql.rows_sent", mysqlRowsSentAttributeValue)
+	lr.Attributes().PutInt("mysql.rows_examined", mysqlRowsExaminedAttributeValue)
+	lr.Attributes().PutInt("mysql.select_full_join", mysqlSelectFullJoinAttributeValue)
+	lr.Attributes().PutInt("mysql.select_full_range_join", mysqlSelectFullRangeJoinAttributeValue)
+	lr.Attributes().PutInt("mysql.select_range", mysqlSelectRangeAttributeValue)
+	lr.Attributes().PutInt("mysql.select_range_check", mysqlSelectRangeCheckAttributeValue)
+	lr.Attributes().PutInt("mysql.select_scan", mysqlSelectScanAttributeValue)
+	lr.Attributes().PutInt("mysql.sort_merge_passes", mysqlSortMergePassesAttributeValue)
+	lr.Attributes().PutInt("mysql.sort_range", mysqlSortRangeAttributeValue)
+	lr.Attributes().PutInt("mysql.sort_rows", mysqlSortRowsAttributeValue)
+	lr.Attributes().PutInt("mysql.sort_scan", mysqlSortScanAttributeValue)
+	lr.Attributes().PutInt("mysql.no_index_used", mysqlNoIndexUsedAttributeValue)
+	lr.Attributes().PutInt("mysql.no_good_index_used", mysqlNoGoodIndexUsedAttributeValue)
+	lr.Attributes().PutStr("mysql.processlist_user", mysqlProcesslistUserAttributeValue)
+	lr.Attributes().PutStr("mysql.processlist_host", mysqlProcesslistHostAttributeValue)
+	lr.Attributes().PutStr("mysql.processlist_db", mysqlProcesslistDbAttributeValue)
 }
 
 // emit appends recorded event data to a events slice and prepares it for recording another set of log records.
@@ -164,6 +190,6 @@ func (lb *LogsBuilder) Emit(options ...ResourceLogsOption) plog.Logs {
 }
 
 // RecordDbServerQuerySampleEvent adds a log record of db.server.query_sample event.
-func (lb *LogsBuilder) RecordDbServerQuerySampleEvent(ctx context.Context, timestamp pcommon.Timestamp, dbSystemNameAttributeValue AttributeDbSystemName, dbQueryTextAttributeValue string) {
-	lb.eventDbServerQuerySample.recordEvent(ctx, timestamp, dbSystemNameAttributeValue.String(), dbQueryTextAttributeValue)
+func (lb *LogsBuilder) RecordDbServerQuerySampleEvent(ctx context.Context, timestamp pcommon.Timestamp, dbSystemNameAttributeValue AttributeDbSystemName, mysqlCurrentSchemaAttributeValue string, mysqlSQLTextAttributeValue string, mysqlDigestAttributeValue string, mysqlDigestTextAttributeValue string, mysqlEndEventIDAttributeValue int64, mysqlTimerStartAttributeValue float64, mysqlUptimeAttributeValue string, mysqlTimerEndAttributeValue float64, mysqlTimerWaitAttributeValue float64, mysqlLockTimeAttributeValue float64, mysqlRowsAffectedAttributeValue int64, mysqlRowsSentAttributeValue int64, mysqlRowsExaminedAttributeValue int64, mysqlSelectFullJoinAttributeValue int64, mysqlSelectFullRangeJoinAttributeValue int64, mysqlSelectRangeAttributeValue int64, mysqlSelectRangeCheckAttributeValue int64, mysqlSelectScanAttributeValue int64, mysqlSortMergePassesAttributeValue int64, mysqlSortRangeAttributeValue int64, mysqlSortRowsAttributeValue int64, mysqlSortScanAttributeValue int64, mysqlNoIndexUsedAttributeValue int64, mysqlNoGoodIndexUsedAttributeValue int64, mysqlProcesslistUserAttributeValue string, mysqlProcesslistHostAttributeValue string, mysqlProcesslistDbAttributeValue string) {
+	lb.eventDbServerQuerySample.recordEvent(ctx, timestamp, dbSystemNameAttributeValue.String(), mysqlCurrentSchemaAttributeValue, mysqlSQLTextAttributeValue, mysqlDigestAttributeValue, mysqlDigestTextAttributeValue, mysqlEndEventIDAttributeValue, mysqlTimerStartAttributeValue, mysqlUptimeAttributeValue, mysqlTimerEndAttributeValue, mysqlTimerWaitAttributeValue, mysqlLockTimeAttributeValue, mysqlRowsAffectedAttributeValue, mysqlRowsSentAttributeValue, mysqlRowsExaminedAttributeValue, mysqlSelectFullJoinAttributeValue, mysqlSelectFullRangeJoinAttributeValue, mysqlSelectRangeAttributeValue, mysqlSelectRangeCheckAttributeValue, mysqlSelectScanAttributeValue, mysqlSortMergePassesAttributeValue, mysqlSortRangeAttributeValue, mysqlSortRowsAttributeValue, mysqlSortScanAttributeValue, mysqlNoIndexUsedAttributeValue, mysqlNoGoodIndexUsedAttributeValue, mysqlProcesslistUserAttributeValue, mysqlProcesslistHostAttributeValue, mysqlProcesslistDbAttributeValue)
 }
