@@ -30,6 +30,7 @@ type Config struct {
 	confignet.AddrConfig           `mapstructure:",squash"`
 	TLS                            configtls.ClientConfig        `mapstructure:"tls,omitempty"`
 	MetricsBuilderConfig           metadata.MetricsBuilderConfig `mapstructure:",squash"`
+	LogsBuilderConfig              metadata.LogsBuilderConfig    `mapstructure:",squash"`
 	StatementEvents                StatementEventsConfig         `mapstructure:"statement_events"`
 }
 

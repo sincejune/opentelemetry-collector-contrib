@@ -4,6 +4,7 @@ status:
   class: receiver
   stability:
     beta: [metrics]
+    development: [logs]
   distributions: [contrib]
   codeowners:
     active: [antonblock]
@@ -173,6 +174,21 @@ attributes:
     description: The table size types.
     type: string
     enum: [data, index]
+  db.system.name:
+    description: The name of the database system.
+    type: string
+    enum: [mysql]
+  db.query.text:
+    description: The text of the executed query.
+    type: string
+
+events:
+  db.server.query_sample:
+    enabled: true
+    description: query sample event
+    attributes:
+      - db.system.name
+      - db.query.text
 
 metrics:
   mysql.buffer_pool.pages:

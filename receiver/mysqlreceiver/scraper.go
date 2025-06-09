@@ -24,6 +24,7 @@ type mySQLScraper struct {
 	logger    *zap.Logger
 	config    *Config
 	mb        *metadata.MetricsBuilder
+	lb        *metadata.LogsBuilder
 
 	// Feature gates regarding resource attributes
 	renameCommands bool
@@ -37,6 +38,7 @@ func newMySQLScraper(
 		logger: settings.Logger,
 		config: config,
 		mb:     metadata.NewMetricsBuilder(config.MetricsBuilderConfig, settings),
+		lb:     metadata.NewLogsBuilder(config.LogsBuilderConfig, settings),
 	}
 }
 
@@ -66,6 +68,54 @@ func (m *mySQLScraper) shutdown(context.Context) error {
 
 // scrape scrapes the mysql db metric stats, transforms them and labels them into a metric slices.
 func (m *mySQLScraper) scrape(context.Context) (pmetric.Metrics, error) {
+	if m.sqlclient == nil {
+		return pmetric.Metrics{}, errors.New("failed to connect to http client")
+	}
+
+	now := pcommon.NewTimestampFromTime(time.Now())
+
+	// collect innodb metrics.
+	innodbStats, innoErr := m.sqlclient.getInnodbStats()
+	if innoErr != nil {
+		m.logger.Error("Failed to fetch InnoDB stats", zap.Error(innoErr))
+	}
+
+	errs := &scrapererror.ScrapeErrors{}
+	for k, v := range innodbStats {
+		if k != "buffer_pool_size" {
+			continue
+		}
+		addPartialIfError(errs, m.mb.RecordMysqlBufferPoolLimitDataPoint(now, v))
+	}
+
+	// collect io_waits metrics.
+	m.scrapeTableIoWaitsStats(now, errs)
+	m.scrapeIndexIoWaitsStats(now, errs)
+
+	// collect table size metrics.
+
+	m.scrapeTableStats(now, errs)
+
+	// collect performance event statements metrics.
+	m.scrapeStatementEventsStats(now, errs)
+	// collect lock table events metrics
+	m.scrapeTableLockWaitEventStats(now, errs)
+
+	// collect global status metrics.
+	m.scrapeGlobalStats(now, errs)
+
+	// collect replicas status metrics.
+	m.scrapeReplicaStatusStats(now)
+
+	rb := m.mb.NewResourceBuilder()
+	rb.SetMysqlInstanceEndpoint(m.config.Endpoint)
+	m.mb.EmitForResource(metadata.WithResource(rb.Emit()))
+
+	return m.mb.Emit(), errs.Combine()
+}
+
+// scrape scrapes the mysql db metric stats, transforms them and labels them into a metric slices.
+func (m *mySQLScraper) scrapeLog(context.Context) (pmetric.Metrics, error) {
 	if m.sqlclient == nil {
 		return pmetric.Metrics{}, errors.New("failed to connect to http client")
 	}
