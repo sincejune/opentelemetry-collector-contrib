@@ -21,7 +21,9 @@ func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
-		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability))
+		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability),
+		receiver.WithLogs(createLogsReceiver, metadata.LogsStability),
+	)
 }
 
 func createDefaultConfig() component.Config {
@@ -74,14 +76,21 @@ func createLogsReceiver(
 	cfg := rConf.(*Config)
 
 	ns := newMySQLScraper(params, cfg)
-	s, err := scraper.NewLogs(ns.scrape, scraper.WithStart(ns.start),
+	s, err := scraper.NewLogs(ns.scrapeLog, scraper.WithStart(ns.start),
 		scraper.WithShutdown(ns.shutdown))
 	if err != nil {
 		return nil, err
 	}
 
+	opts := make([]scraperhelper.ControllerOption, 0)
+	opt := scraperhelper.AddFactoryWithConfig(
+		scraper.NewFactory(metadata.Type, nil,
+			scraper.WithLogs(func(context.Context, scraper.Settings, component.Config) (scraper.Logs, error) {
+				return s, nil
+			}, component.StabilityLevelAlpha)), nil)
+	opts = append(opts, opt)
 	return scraperhelper.NewLogsController(
 		&cfg.ControllerConfig, params, consumer,
-		scraperhelper.AddScraper(metadata.Type, s),
+		opts...,
 	)
 }

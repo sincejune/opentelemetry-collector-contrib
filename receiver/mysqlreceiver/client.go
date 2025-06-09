@@ -4,10 +4,13 @@
 package mysqlreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mysqlreceiver"
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"strings"
+	"text/template"
 	"time"
 
 	// registers the mysql driver
@@ -26,6 +29,7 @@ type client interface {
 	getStatementEventsStats() ([]StatementEventStats, error)
 	getTableLockWaitEventStats() ([]tableLockWaitEventStats, error)
 	getReplicaStatusStats() ([]ReplicaStatusStats, error)
+	getQuerySamples() ([]QuerySample, error)
 	Close() error
 }
 
@@ -188,6 +192,36 @@ type ReplicaStatusStats struct {
 	parallelMode                string
 	replicateDoDomainIDs        string
 	replicateIgnoreDomainIDs    string
+}
+
+type QuerySample struct {
+	currentSchema       sql.NullString  // Column: current_schema
+	sqlText             sql.NullString  // Column: sql_text
+	digest              sql.NullString  // Column: digest
+	digestText          sql.NullString  // Column: digest_text
+	endEventID          sql.NullInt64   // Column: end_event_id
+	timerStart          sql.NullFloat64 // Column: timer_start / 1e12
+	uptime              sql.NullString  // Column: uptime
+	timerEnd            sql.NullFloat64 // Column: timer_end / 1e12
+	timerWait           sql.NullFloat64 // Column: timer_wait / 1e12
+	lockTime            sql.NullFloat64 // Column: lock_time / 1e12
+	rowsAffected        uint64          // Column: rows_affected
+	rowsSent            uint64          // Column: rows_sent
+	rowsExamined        uint64          // Column: rows_examined
+	selectFullJoin      uint64          // Column: select_full_join
+	selectFullRangeJoin uint64          // Column: select_full_range_join
+	selectRange         uint64          // Column: select_range
+	selectRangeCheck    uint64          // Column: select_range_check
+	selectScan          uint64          // Column: select_scan
+	sortMergePasses     uint64          // Column: sort_merge_passes
+	sortRange           uint64          // Column: sort_range
+	sortRows            uint64          // Column: sort_rows
+	sortScan            uint64          // Column: sort_scan
+	noIndexUsed         uint64          // Column: no_index_used
+	noGoodIndexUsed     uint64          // Column: no_good_index_used
+	processlistUser     sql.NullString  // Column: processlist_user
+	processlistHost     sql.NullString  // Column: processlist_host
+	processlistDB       sql.NullString  // Column: processlist_db
 }
 
 var _ client = (*mySQLClient)(nil)
@@ -669,6 +703,77 @@ func (c *mySQLClient) getReplicaStatusStats() ([]ReplicaStatusStats, error) {
 	}
 
 	return stats, nil
+}
+
+//go:embed templates/querySample.tmpl
+var querySampleTemplate string
+
+func (c *mySQLClient) getQuerySamples() ([]QuerySample, error) {
+	fmt.Println("Calling getQuerySamples")
+	tmpl := template.Must(template.New("querySample").Option("missingkey=error").Parse(querySampleTemplate))
+	buf := bytes.Buffer{}
+
+	if err := tmpl.Execute(&buf, map[string]any{}); err != nil {
+		// logger
+		fmt.Println("Error executing getQuerySamples")
+		return nil, nil
+	}
+
+	rows, err := c.client.Query(buf.String())
+	if err != nil {
+		fmt.Println("Error executing getQuerySamples")
+		return nil, err
+	}
+	fmt.Println(rows.Columns())
+	fmt.Println(rows.Err())
+	//fmt.Println(rows.ColumnTypes())
+	//cols, err := rows.ColumnTypes()
+	//for _, col := range cols {
+	//	fmt.Printf("Column: %s, Type: %s\n", col.Name(), col.ScanType())
+	//}
+	defer rows.Close()
+	var samples []QuerySample
+	for rows.Next() {
+		fmt.Println("Has next item")
+		var s QuerySample
+		err := rows.Scan(
+			&s.currentSchema,
+			&s.sqlText,
+			&s.digest,
+			&s.digestText,
+			&s.endEventID,
+			&s.timerStart,
+			&s.uptime,
+			&s.timerEnd,
+			&s.timerWait,
+			&s.lockTime,
+			&s.rowsAffected,
+			&s.rowsSent,
+			&s.rowsExamined,
+			&s.selectFullJoin,
+			&s.selectFullRangeJoin,
+			&s.selectRange,
+			&s.selectRangeCheck,
+			&s.selectScan,
+			&s.sortMergePasses,
+			&s.sortRange,
+			&s.sortRows,
+			&s.sortScan,
+			&s.noIndexUsed,
+			&s.noGoodIndexUsed,
+			&s.processlistUser,
+			&s.processlistHost,
+			&s.processlistDB,
+		)
+		if err != nil {
+			fmt.Println("Error executing getQuerySamples")
+			return nil, err
+		}
+		//fmt.Println(s.sqlText)
+		samples = append(samples, s)
+	}
+
+	return samples, nil
 }
 
 func query(c mySQLClient, query string) (map[string]string, error) {

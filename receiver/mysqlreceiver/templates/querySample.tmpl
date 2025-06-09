@@ -1,0 +1,36 @@
+SELECT current_schema,
+       sql_text,
+       digest,
+       digest_text,
+       end_event_id,
+       timer_start / 1e12,
+       (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'UPTIME') as uptime,
+       timer_end / 1e12,
+       timer_wait / 1e12,
+       lock_time / 1e12,
+       rows_affected,
+       rows_sent,
+       rows_examined,
+       select_full_join,
+       select_full_range_join,
+       select_range,
+       select_range_check,
+       select_scan,
+       sort_merge_passes,
+       sort_range,
+       sort_rows,
+       sort_scan,
+       no_index_used,
+       no_good_index_used,
+       processlist_user,
+       processlist_host,
+       processlist_db
+FROM performance_schema.events_statements_current as E
+         LEFT JOIN performance_schema.threads as T ON E.thread_id = T.thread_id
+WHERE sql_text IS NOT NULL
+  AND event_name like 'statement/%'
+  AND digest_text IS NOT NULL
+  AND digest_text NOT LIKE 'EXPLAIN %'
+  AND digest_text REGEXP '^(SELECT|TABLE|DELETE|INSERT|REPLACE|UPDATE|WITH).*'
+ORDER BY timer_wait DESC
+LIMIT 1000;

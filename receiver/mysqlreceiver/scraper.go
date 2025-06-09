@@ -5,9 +5,13 @@ package mysqlreceiver // import "github.com/open-telemetry/opentelemetry-collect
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
+
+	"go.opentelemetry.io/collector/pdata/plog"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -115,51 +119,27 @@ func (m *mySQLScraper) scrape(context.Context) (pmetric.Metrics, error) {
 }
 
 // scrape scrapes the mysql db metric stats, transforms them and labels them into a metric slices.
-func (m *mySQLScraper) scrapeLog(context.Context) (pmetric.Metrics, error) {
+func (m *mySQLScraper) scrapeLog(context.Context) (plog.Logs, error) {
 	if m.sqlclient == nil {
-		return pmetric.Metrics{}, errors.New("failed to connect to http client")
+		return plog.NewLogs(), errors.New("failed to connect to http client")
 	}
 
-	now := pcommon.NewTimestampFromTime(time.Now())
-
-	// collect innodb metrics.
-	innodbStats, innoErr := m.sqlclient.getInnodbStats()
-	if innoErr != nil {
-		m.logger.Error("Failed to fetch InnoDB stats", zap.Error(innoErr))
-	}
+	//collect innodb metrics.
+	//innodbStats, innoErr := m.sqlclient.getInnodbStats()
+	//if innoErr != nil {
+	//	m.logger.Error("Failed to fetch InnoDB stats", zap.Error(innoErr))
+	//}
 
 	errs := &scrapererror.ScrapeErrors{}
-	for k, v := range innodbStats {
-		if k != "buffer_pool_size" {
-			continue
-		}
-		addPartialIfError(errs, m.mb.RecordMysqlBufferPoolLimitDataPoint(now, v))
-	}
+	//for k, v := range innodbStats {
+	//	if k != "buffer_pool_size" {
+	//		continue
+	//	}
+	//	addPartialIfError(errs, m.mb.RecordMysqlBufferPoolLimitDataPoint(now, v))
+	//}
 
-	// collect io_waits metrics.
-	m.scrapeTableIoWaitsStats(now, errs)
-	m.scrapeIndexIoWaitsStats(now, errs)
-
-	// collect table size metrics.
-
-	m.scrapeTableStats(now, errs)
-
-	// collect performance event statements metrics.
-	m.scrapeStatementEventsStats(now, errs)
-	// collect lock table events metrics
-	m.scrapeTableLockWaitEventStats(now, errs)
-
-	// collect global status metrics.
-	m.scrapeGlobalStats(now, errs)
-
-	// collect replicas status metrics.
-	m.scrapeReplicaStatusStats(now)
-
-	rb := m.mb.NewResourceBuilder()
-	rb.SetMysqlInstanceEndpoint(m.config.Endpoint)
-	m.mb.EmitForResource(metadata.WithResource(rb.Emit()))
-
-	return m.mb.Emit(), errs.Combine()
+	m.scrapeQuerySamples()
+	return m.lb.Emit(), errs.Combine()
 }
 
 func (m *mySQLScraper) scrapeGlobalStats(now pcommon.Timestamp, errs *scrapererror.ScrapeErrors) {
@@ -632,6 +612,68 @@ func (m *mySQLScraper) scrapeReplicaStatusStats(now pcommon.Timestamp) {
 		}
 
 		m.mb.RecordMysqlReplicaSQLDelayDataPoint(now, s.sqlDelay)
+	}
+}
+
+func (m *mySQLScraper) scrapeQuerySamples() {
+	f := func(s sql.NullString) string {
+		if s.Valid {
+			return s.String
+		}
+		return ""
+	}
+	f2 := func(i sql.NullInt64) int64 {
+		if i.Valid {
+			return i.Int64
+		}
+		return int64(0)
+	}
+	f3 := func(fl sql.NullFloat64) float64 {
+		if fl.Valid {
+			return fl.Float64
+		}
+		return float64(0)
+	}
+	fmt.Println("Calling scrapeQuerySamples")
+	samples, err := m.sqlclient.getQuerySamples()
+	for _, sample := range samples {
+		fmt.Println("Processing sample:", sample)
+		m.lb.RecordDbServerQuerySampleEvent(
+			context.Background(),
+			pcommon.NewTimestampFromTime(time.Now()),
+			metadata.AttributeDbSystemNameMysql,
+			f(sample.currentSchema),
+			f(sample.sqlText),
+			f(sample.digest),
+			f(sample.digestText),
+			f2(sample.endEventID),
+			f3(sample.timerStart),
+			f(sample.uptime),
+			f3(sample.timerEnd),
+			f3(sample.timerWait),
+			f3(sample.lockTime),
+			int64(sample.rowsAffected),
+			int64(sample.rowsSent),
+			int64(sample.rowsExamined),
+			// TODO: safe?
+			int64(sample.selectFullJoin),
+			int64(sample.selectFullRangeJoin),
+			int64(sample.selectRange),
+			int64(sample.selectRangeCheck),
+			int64(sample.selectScan),
+			int64(sample.sortMergePasses),
+			int64(sample.sortRange),
+			int64(sample.sortRows),
+			int64(sample.sortScan),
+			int64(sample.noIndexUsed),
+			int64(sample.noGoodIndexUsed),
+			f(sample.processlistUser),
+			f(sample.processlistHost),
+			f(sample.processlistDB),
+		)
+	}
+	if err != nil {
+		return
 	}
 }
 
