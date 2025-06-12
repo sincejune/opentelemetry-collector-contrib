@@ -635,7 +635,7 @@ func (m *mySQLScraper) scrapeQuerySamples() {
 		return float64(0)
 	}
 	fmt.Println("Calling scrapeQuerySamples")
-	samples, err := m.sqlclient.getQuerySamples()
+	samples, err := m.sqlclient.getQuerySamples(m.config.QuerySampleCollection.MaxRowsPerQuery)
 	for _, sample := range samples {
 		fmt.Println("Processing sample:", sample)
 		m.lb.RecordDbServerQuerySampleEvent(
@@ -643,6 +643,7 @@ func (m *mySQLScraper) scrapeQuerySamples() {
 			pcommon.NewTimestampFromTime(time.Now()),
 			metadata.AttributeDbSystemNameMysql,
 			f(sample.currentSchema),
+			// TODO: normalize the query
 			f(sample.sqlText),
 			f(sample.digest),
 			f(sample.digestText),

@@ -32,6 +32,13 @@ type Config struct {
 	MetricsBuilderConfig           metadata.MetricsBuilderConfig `mapstructure:",squash"`
 	LogsBuilderConfig              metadata.LogsBuilderConfig    `mapstructure:",squash"`
 	StatementEvents                StatementEventsConfig         `mapstructure:"statement_events"`
+	QuerySampleCollection          QuerySampleCollection         `mapstructure:"query_sample_collection"`
+}
+
+type QuerySampleCollection struct {
+	MaxRowsPerQuery uint64 `mapstructure:"max_rows_per_query"`
+
+	_ struct{}
 }
 
 type StatementEventsConfig struct {

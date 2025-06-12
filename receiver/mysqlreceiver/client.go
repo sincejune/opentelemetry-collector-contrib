@@ -29,7 +29,7 @@ type client interface {
 	getStatementEventsStats() ([]StatementEventStats, error)
 	getTableLockWaitEventStats() ([]tableLockWaitEventStats, error)
 	getReplicaStatusStats() ([]ReplicaStatusStats, error)
-	getQuerySamples() ([]QuerySample, error)
+	getQuerySamples(uint64) ([]QuerySample, error)
 	Close() error
 }
 
@@ -708,14 +708,18 @@ func (c *mySQLClient) getReplicaStatusStats() ([]ReplicaStatusStats, error) {
 //go:embed templates/querySample.tmpl
 var querySampleTemplate string
 
-func (c *mySQLClient) getQuerySamples() ([]QuerySample, error) {
+func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
 	fmt.Println("Calling getQuerySamples")
+	fmt.Println("Limit:", limit)
 	tmpl := template.Must(template.New("querySample").Option("missingkey=error").Parse(querySampleTemplate))
 	buf := bytes.Buffer{}
 
-	if err := tmpl.Execute(&buf, map[string]any{}); err != nil {
+	if err := tmpl.Execute(&buf, map[string]any{
+		"limit": limit,
+	}); err != nil {
 		// logger
 		fmt.Println("Error executing getQuerySamples")
+		fmt.Println(err)
 		return nil, nil
 	}
 

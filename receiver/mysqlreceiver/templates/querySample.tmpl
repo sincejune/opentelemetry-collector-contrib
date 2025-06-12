@@ -33,4 +33,4 @@ WHERE sql_text IS NOT NULL
   AND digest_text NOT LIKE 'EXPLAIN %'
   AND digest_text REGEXP '^(SELECT|TABLE|DELETE|INSERT|REPLACE|UPDATE|WITH).*'
 ORDER BY timer_wait DESC
-LIMIT 1000;
+LIMIT {{ .limit }};

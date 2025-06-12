@@ -43,6 +43,9 @@ func createDefaultConfig() component.Config {
 			Limit:           defaultStatementEventsLimit,
 			TimeLimit:       defaultStatementEventsTimeLimit,
 		},
+		QuerySampleCollection: QuerySampleCollection{
+			MaxRowsPerQuery: 100,
+		},
 	}
 }
 

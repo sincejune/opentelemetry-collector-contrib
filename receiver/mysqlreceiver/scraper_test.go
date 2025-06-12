@@ -167,10 +167,11 @@ type mockClient struct {
 	statementEventsFile         string
 	tableLockWaitEventStatsFile string
 	replicaStatusFile           string
+	querySamplesFile            string
 }
 
-func (c *mockClient) getQuerySamples() ([]QuerySample, error) {
-	//TODO implement me
+func (c *mockClient) getQuerySamples(uint65 uint64) ([]QuerySample, error) {
+	// TODO implement me
 	panic("implement me")
 }
 
