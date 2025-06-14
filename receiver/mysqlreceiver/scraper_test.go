@@ -90,7 +90,7 @@ func TestScrape(t *testing.T) {
 		require.NoError(t, err)
 		expectedLogFile := filepath.Join("testdata", "scraper", "expectedLogs.yaml")
 		// Uncomment this to regenerate the expected logs file
-		//golden.WriteLogs(t, expectedLogFile, actualLogs)
+		// golden.WriteLogs(t, expectedLogFile, actualLogs)
 		expectedLogs, err := golden.ReadLogs(expectedLogFile)
 		require.NoError(t, err)
 
@@ -500,8 +500,10 @@ func (c *mockClient) getQuerySamples(uint64) ([]QuerySample, error) {
 
 		samples = append(samples, s)
 	}
+
 	return samples, nil
 }
+
 func (c *mockClient) Close() error {
 	return nil
 }

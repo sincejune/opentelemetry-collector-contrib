@@ -6,14 +6,12 @@ package mysqlreceiver // import "github.com/open-telemetry/opentelemetry-collect
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
-	"go.opentelemetry.io/collector/pdata/plog"
-
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/scraper/scrapererror"
@@ -123,21 +121,8 @@ func (m *mySQLScraper) scrapeLog(context.Context) (plog.Logs, error) {
 		return plog.NewLogs(), errors.New("failed to connect to http client")
 	}
 
-	//collect innodb metrics.
-	//innodbStats, innoErr := m.sqlclient.getInnodbStats()
-	//if innoErr != nil {
-	//	m.logger.Error("Failed to fetch InnoDB stats", zap.Error(innoErr))
-	//}
-
 	errs := &scrapererror.ScrapeErrors{}
-	//for k, v := range innodbStats {
-	//	if k != "buffer_pool_size" {
-	//		continue
-	//	}
-	//	addPartialIfError(errs, m.mb.RecordMysqlBufferPoolLimitDataPoint(now, v))
-	//}
-
-	m.scrapeQuerySamples()
+	m.scrapeQuerySamples(errs)
 	return m.lb.Emit(), errs.Combine()
 }
 
@@ -614,11 +599,15 @@ func (m *mySQLScraper) scrapeReplicaStatusStats(now pcommon.Timestamp) {
 	}
 }
 
-func (m *mySQLScraper) scrapeQuerySamples() {
-	fmt.Println("Calling scrapeQuerySamples")
+func (m *mySQLScraper) scrapeQuerySamples(errs *scrapererror.ScrapeErrors) {
 	samples, err := m.sqlclient.getQuerySamples(m.config.QuerySampleCollection.MaxRowsPerQuery)
+	if err != nil {
+		m.logger.Error("Failed to fetch query samples", zap.Error(err))
+		errs.AddPartial(1, err)
+		return
+	}
+
 	for _, sample := range samples {
-		fmt.Println("Processing sample:", sample)
 		m.lb.RecordDbServerQuerySampleEvent(
 			context.Background(),
 			pcommon.NewTimestampFromTime(time.Now()),
@@ -633,28 +622,24 @@ func (m *mySQLScraper) scrapeQuerySamples() {
 			sample.timerEnd,
 			sample.timerWait,
 			sample.lockTime,
-			int64(sample.rowsAffected),
-			int64(sample.rowsSent),
-			int64(sample.rowsExamined),
-			// TODO: safe?
-			int64(sample.selectFullJoin),
-			int64(sample.selectFullRangeJoin),
-			int64(sample.selectRange),
-			int64(sample.selectRangeCheck),
-			int64(sample.selectScan),
-			int64(sample.sortMergePasses),
-			int64(sample.sortRange),
-			int64(sample.sortRows),
-			int64(sample.sortScan),
-			int64(sample.noIndexUsed),
-			int64(sample.noGoodIndexUsed),
+			sample.rowsAffected,
+			sample.rowsSent,
+			sample.rowsExamined,
+			sample.selectFullJoin,
+			sample.selectFullRangeJoin,
+			sample.selectRange,
+			sample.selectRangeCheck,
+			sample.selectScan,
+			sample.sortMergePasses,
+			sample.sortRange,
+			sample.sortRows,
+			sample.sortScan,
+			sample.noIndexUsed,
+			sample.noGoodIndexUsed,
 			sample.processlistUser,
 			sample.processlistHost,
 			sample.processlistDB,
 		)
-	}
-	if err != nil {
-		return
 	}
 }
 
