@@ -1,0 +1,97 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: db.system.name
+                value:
+                  stringValue: mysql
+              - key: mysql.current_schema
+                value:
+                  stringValue: mysql
+              - key: mysql.sql_text
+                value:
+                  stringValue: SELECT * FROM performance_schema.events_statements_current
+              - key: mysql.digest
+                value:
+                  stringValue: aa3ae94d6228db4cea1319abe4de481744048f78be0c8be25fee193c313c7acc
+              - key: mysql.digest_text
+                value:
+                  stringValue: digest_text
+              - key: mysql.end_event_id
+                value:
+                  intValue: "729"
+              - key: mysql.timer_start
+                value:
+                  doubleValue: 415394.269940273
+              - key: mysql.uptime
+                value:
+                  intValue: "415398"
+              - key: mysql.timer_end
+                value:
+                  doubleValue: 415394.283257564
+              - key: mysql.timer_wait
+                value:
+                  doubleValue: 0.013317291
+              - key: mysql.lock_time
+                value:
+                  doubleValue: 6.5e-05
+              - key: mysql.rows_affected
+                value:
+                  intValue: "0"
+              - key: mysql.rows_sent
+                value:
+                  intValue: "2"
+              - key: mysql.rows_examined
+                value:
+                  intValue: "7"
+              - key: mysql.select_full_join
+                value:
+                  intValue: "0"
+              - key: mysql.select_full_range_join
+                value:
+                  intValue: "0"
+              - key: mysql.select_range
+                value:
+                  intValue: "0"
+              - key: mysql.select_range_check
+                value:
+                  intValue: "0"
+              - key: mysql.select_scan
+                value:
+                  intValue: "1"
+              - key: mysql.sort_merge_passes
+                value:
+                  intValue: "0"
+              - key: mysql.sort_range
+                value:
+                  intValue: "0"
+              - key: mysql.sort_rows
+                value:
+                  intValue: "2"
+              - key: mysql.sort_scan
+                value:
+                  intValue: "1"
+              - key: mysql.no_index_used
+                value:
+                  intValue: "1"
+              - key: mysql.no_good_index_used
+                value:
+                  intValue: "0"
+              - key: mysql.processlist_user
+                value:
+                  stringValue: root
+              - key: mysql.processlist_host
+                value:
+                  stringValue: 172.19.0.5
+              - key: mysql.processlist_db
+                value:
+                  stringValue: mysql
+            body: {}
+            eventName: db.server.query_sample
+            spanId: ""
+            timeUnixNano: "1749892751450598000"
+            traceId: ""
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mysqlreceiver
+          version: latest
