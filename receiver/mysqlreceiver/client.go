@@ -724,6 +724,7 @@ func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
 	}
 
 	defer rows.Close()
+
 	var samples []QuerySample
 	for rows.Next() {
 		var s QuerySample
