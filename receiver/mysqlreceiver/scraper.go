@@ -122,7 +122,11 @@ func (m *mySQLScraper) scrapeLog(context.Context) (plog.Logs, error) {
 	}
 
 	errs := &scrapererror.ScrapeErrors{}
-	m.scrapeQuerySamples(errs)
+
+	now := pcommon.NewTimestampFromTime(time.Now())
+
+	m.scrapeQuerySamples(now, errs)
+
 	return m.lb.Emit(), errs.Combine()
 }
 
@@ -599,7 +603,7 @@ func (m *mySQLScraper) scrapeReplicaStatusStats(now pcommon.Timestamp) {
 	}
 }
 
-func (m *mySQLScraper) scrapeQuerySamples(errs *scrapererror.ScrapeErrors) {
+func (m *mySQLScraper) scrapeQuerySamples(now pcommon.Timestamp, errs *scrapererror.ScrapeErrors) {
 	samples, err := m.sqlclient.getQuerySamples(m.config.QuerySampleCollection.MaxRowsPerQuery)
 	if err != nil {
 		m.logger.Error("Failed to fetch query samples", zap.Error(err))
@@ -610,7 +614,7 @@ func (m *mySQLScraper) scrapeQuerySamples(errs *scrapererror.ScrapeErrors) {
 	for _, sample := range samples {
 		m.lb.RecordDbServerQuerySampleEvent(
 			context.Background(),
-			pcommon.NewTimestampFromTime(time.Now()),
+			now,
 			metadata.AttributeDbSystemNameMysql,
 			sample.currentSchema,
 			sample.sqlText,
