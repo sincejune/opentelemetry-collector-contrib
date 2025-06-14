@@ -5,7 +5,6 @@ package mysqlreceiver // import "github.com/open-telemetry/opentelemetry-collect
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
@@ -616,24 +615,6 @@ func (m *mySQLScraper) scrapeReplicaStatusStats(now pcommon.Timestamp) {
 }
 
 func (m *mySQLScraper) scrapeQuerySamples() {
-	f := func(s sql.NullString) string {
-		if s.Valid {
-			return s.String
-		}
-		return ""
-	}
-	f2 := func(i sql.NullInt64) int64 {
-		if i.Valid {
-			return i.Int64
-		}
-		return int64(0)
-	}
-	f3 := func(fl sql.NullFloat64) float64 {
-		if fl.Valid {
-			return fl.Float64
-		}
-		return float64(0)
-	}
 	fmt.Println("Calling scrapeQuerySamples")
 	samples, err := m.sqlclient.getQuerySamples(m.config.QuerySampleCollection.MaxRowsPerQuery)
 	for _, sample := range samples {
@@ -642,17 +623,16 @@ func (m *mySQLScraper) scrapeQuerySamples() {
 			context.Background(),
 			pcommon.NewTimestampFromTime(time.Now()),
 			metadata.AttributeDbSystemNameMysql,
-			f(sample.currentSchema),
-			// TODO: normalize the query
-			f(sample.sqlText),
-			f(sample.digest),
-			f(sample.digestText),
-			f2(sample.endEventID),
-			f3(sample.timerStart),
-			f(sample.uptime),
-			f3(sample.timerEnd),
-			f3(sample.timerWait),
-			f3(sample.lockTime),
+			sample.currentSchema,
+			sample.sqlText,
+			sample.digest,
+			sample.digestText,
+			sample.endEventID,
+			sample.timerStart,
+			sample.uptime,
+			sample.timerEnd,
+			sample.timerWait,
+			sample.lockTime,
 			int64(sample.rowsAffected),
 			int64(sample.rowsSent),
 			int64(sample.rowsExamined),
@@ -668,9 +648,9 @@ func (m *mySQLScraper) scrapeQuerySamples() {
 			int64(sample.sortScan),
 			int64(sample.noIndexUsed),
 			int64(sample.noGoodIndexUsed),
-			f(sample.processlistUser),
-			f(sample.processlistHost),
-			f(sample.processlistDB),
+			sample.processlistUser,
+			sample.processlistHost,
+			sample.processlistDB,
 		)
 	}
 	if err != nil {

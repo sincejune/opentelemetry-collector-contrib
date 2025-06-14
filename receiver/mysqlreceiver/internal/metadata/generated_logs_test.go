@@ -129,7 +129,7 @@ func TestLogsBuilder(t *testing.T) {
 			allEventsCount := 0
 			defaultEventsCount++
 			allEventsCount++
-			lb.RecordDbServerQuerySampleEvent(ctx, timestamp, AttributeDbSystemNameMysql, "mysql.current_schema-val", "mysql.sql_text-val", "mysql.digest-val", "mysql.digest_text-val", 18, 17.100000, "mysql.uptime-val", 15.100000, 16.100000, 15.100000, 19, 15, 19, 22, 28, 18, 24, 17, 23, 16, 15, 15, 19, 24, "mysql.processlist_user-val", "mysql.processlist_host-val", "mysql.processlist_db-val")
+			lb.RecordDbServerQuerySampleEvent(ctx, timestamp, AttributeDbSystemNameMysql, "mysql.current_schema-val", "mysql.sql_text-val", "mysql.digest-val", "mysql.digest_text-val", 18, 17.100000, 12, 15.100000, 16.100000, 15.100000, 19, 15, 19, 22, 28, 18, 24, 17, 23, 16, 15, 15, 19, 24, "mysql.processlist_user-val", "mysql.processlist_host-val", "mysql.processlist_db-val")
 
 			rb := lb.NewResourceBuilder()
 			rb.SetMysqlInstanceEndpoint("mysql.instance.endpoint-val")
@@ -185,7 +185,7 @@ func TestLogsBuilder(t *testing.T) {
 					assert.Equal(t, 17.100000, attrVal.Double())
 					attrVal, ok = lr.Attributes().Get("mysql.uptime")
 					assert.True(t, ok)
-					assert.Equal(t, "mysql.uptime-val", attrVal.Str())
+					assert.EqualValues(t, 12, attrVal.Int())
 					attrVal, ok = lr.Attributes().Get("mysql.timer_end")
 					assert.True(t, ok)
 					assert.Equal(t, 15.100000, attrVal.Double())
