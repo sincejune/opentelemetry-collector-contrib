@@ -49,6 +49,8 @@ The following settings are optional:
   - `digest_text_limit` - maximum length of `digest_text`. Longer text will be truncated (default=`120`)
   - `time_limit` - maximum time from since the statements have been observed last time (default=`24h`)
   - `limit` - limit of records, which is maximum number of generated metrics (default=`250`)
+- `query_sample_collection`: Additional configuration for query sample collection(`db.server.query_sample` event):
+  - `max_rows_per_query` - maximum number of rows to collect per scrape (default=`1000`)
 
 ### Example Configuration
 
@@ -73,3 +75,5 @@ The full list of settings exposed for this receiver are documented in [config.go
 
 Details about the metrics produced by this receiver can be found in [metadata.yaml](./metadata.yaml)
 
+## Logs
+Details about the logs produced by this receiver can be found in [documentation.md](./documentation.md)
