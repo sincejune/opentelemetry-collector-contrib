@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/collector/scraper/scrapererror"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mysqlreceiver/internal/metadata"
 )
@@ -58,6 +59,8 @@ func TestScrape(t *testing.T) {
 
 		cfg.MetricsBuilderConfig.Metrics.MysqlConnectionCount.Enabled = true
 
+		cfg.LogsBuilderConfig.Events.DbServerQuerySample.Enabled = true
+
 		scraper := newMySQLScraper(receivertest.NewNopSettings(metadata.Type), cfg)
 		scraper.sqlclient = &mockClient{
 			globalStatsFile:             "global_stats",
@@ -68,6 +71,7 @@ func TestScrape(t *testing.T) {
 			statementEventsFile:         "statement_events",
 			tableLockWaitEventStatsFile: "table_lock_wait_event_stats",
 			replicaStatusFile:           "replica_stats",
+			querySamplesFile:            "query_samples",
 		}
 
 		scraper.renameCommands = true
@@ -81,6 +85,17 @@ func TestScrape(t *testing.T) {
 
 		require.NoError(t, pmetrictest.CompareMetrics(actualMetrics, expectedMetrics,
 			pmetrictest.IgnoreMetricDataPointsOrder(), pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreTimestamp()))
+
+		actualLogs, err := scraper.scrapeLog(context.Background())
+		require.NoError(t, err)
+		expectedLogFile := filepath.Join("testdata", "scraper", "expectedLogs.yaml")
+		// Uncomment this to regenerate the expected logs file
+		// golden.WriteLogs(t, expectedLogFile, actualLogs)
+		expectedLogs, err := golden.ReadLogs(expectedLogFile)
+		require.NoError(t, err)
+
+		require.NoError(t, plogtest.CompareLogs(actualLogs, expectedLogs,
+			plogtest.IgnoreTimestamp()))
 	})
 
 	t.Run("scrape has partial failure", func(t *testing.T) {
@@ -167,6 +182,7 @@ type mockClient struct {
 	statementEventsFile         string
 	tableLockWaitEventStatsFile string
 	replicaStatusFile           string
+	querySamplesFile            string
 }
 
 func readFile(fname string) (map[string]string, error) {
@@ -438,6 +454,54 @@ func (c *mockClient) getReplicaStatusStats() ([]ReplicaStatusStats, error) {
 		stats = append(stats, s)
 	}
 	return stats, nil
+}
+
+// Generate a function for getQuerySamples to read data from a static file
+func (c *mockClient) getQuerySamples(uint64) ([]QuerySample, error) {
+	var samples []QuerySample
+	file, err := os.Open(filepath.Join("testdata", "scraper", c.querySamplesFile+".txt"))
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var s QuerySample
+		text := strings.Split(scanner.Text(), "\t")
+
+		s.currentSchema = text[0]
+		s.sqlText = text[1]
+		s.digest = text[2]
+		s.digestText = text[3]
+		s.endEventID, _ = parseInt(text[4])
+		s.timerStart, _ = parseFloat(text[5])
+		s.uptime, _ = parseInt(text[6])
+		s.timerEnd, _ = parseFloat(text[7])
+		s.timerWait, _ = parseFloat(text[8])
+		s.lockTime, _ = parseFloat(text[9])
+		s.rowsAffected, _ = parseInt(text[10])
+		s.rowsSent, _ = parseInt(text[11])
+		s.rowsExamined, _ = parseInt(text[12])
+		s.selectFullJoin, _ = parseInt(text[13])
+		s.selectFullRangeJoin, _ = parseInt(text[14])
+		s.selectRange, _ = parseInt(text[15])
+		s.selectRangeCheck, _ = parseInt(text[16])
+		s.selectScan, _ = parseInt(text[17])
+		s.sortMergePasses, _ = parseInt(text[18])
+		s.sortRange, _ = parseInt(text[19])
+		s.sortRows, _ = parseInt(text[20])
+		s.sortScan, _ = parseInt(text[21])
+		s.noIndexUsed, _ = parseInt(text[22])
+		s.noGoodIndexUsed, _ = parseInt(text[23])
+		s.processlistUser = text[24]
+		s.processlistHost = text[25]
+		s.processlistDB = text[26]
+
+		samples = append(samples, s)
+	}
+
+	return samples, nil
 }
 
 func (c *mockClient) Close() error {

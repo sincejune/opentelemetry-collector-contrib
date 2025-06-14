@@ -4,10 +4,13 @@
 package mysqlreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mysqlreceiver"
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"strings"
+	"text/template"
 	"time"
 
 	// registers the mysql driver
@@ -26,6 +29,7 @@ type client interface {
 	getStatementEventsStats() ([]StatementEventStats, error)
 	getTableLockWaitEventStats() ([]tableLockWaitEventStats, error)
 	getReplicaStatusStats() ([]ReplicaStatusStats, error)
+	getQuerySamples(uint64) ([]QuerySample, error)
 	Close() error
 }
 
@@ -188,6 +192,36 @@ type ReplicaStatusStats struct {
 	parallelMode                string
 	replicateDoDomainIDs        string
 	replicateIgnoreDomainIDs    string
+}
+
+type QuerySample struct {
+	currentSchema       string  // Column: current_schema
+	sqlText             string  // Column: sql_text
+	digest              string  // Column: digest
+	digestText          string  // Column: digest_text
+	endEventID          int64   // Column: end_event_id
+	timerStart          float64 // Column: timer_start / 1e12
+	uptime              int64   // Column: uptime
+	timerEnd            float64 // Column: timer_end / 1e12
+	timerWait           float64 // Column: timer_wait / 1e12
+	lockTime            float64 // Column: lock_time / 1e12
+	rowsAffected        int64   // Column: rows_affected
+	rowsSent            int64   // Column: rows_sent
+	rowsExamined        int64   // Column: rows_examined
+	selectFullJoin      int64   // Column: select_full_join
+	selectFullRangeJoin int64   // Column: select_full_range_join
+	selectRange         int64   // Column: select_range
+	selectRangeCheck    int64   // Column: select_range_check
+	selectScan          int64   // Column: select_scan
+	sortMergePasses     int64   // Column: sort_merge_passes
+	sortRange           int64   // Column: sort_range
+	sortRows            int64   // Column: sort_rows
+	sortScan            int64   // Column: sort_scan
+	noIndexUsed         int64   // Column: no_index_used
+	noGoodIndexUsed     int64   // Column: no_good_index_used
+	processlistUser     string  // Column: processlist_user
+	processlistHost     string  // Column: processlist_host
+	processlistDB       string  // Column: processlist_db
 }
 
 var _ client = (*mySQLClient)(nil)
@@ -669,6 +703,68 @@ func (c *mySQLClient) getReplicaStatusStats() ([]ReplicaStatusStats, error) {
 	}
 
 	return stats, nil
+}
+
+//go:embed templates/querySample.tmpl
+var querySampleTemplate string
+
+func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
+	tmpl := template.Must(template.New("querySample").Option("missingkey=error").Parse(querySampleTemplate))
+	buf := bytes.Buffer{}
+
+	if err := tmpl.Execute(&buf, map[string]any{
+		"limit": limit,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	rows, err := c.client.Query(buf.String())
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var samples []QuerySample
+	for rows.Next() {
+		var s QuerySample
+		err := rows.Scan(
+			&s.currentSchema,
+			&s.sqlText,
+			&s.digest,
+			&s.digestText,
+			&s.endEventID,
+			&s.timerStart,
+			&s.uptime,
+			&s.timerEnd,
+			&s.timerWait,
+			&s.lockTime,
+			&s.rowsAffected,
+			&s.rowsSent,
+			&s.rowsExamined,
+			&s.selectFullJoin,
+			&s.selectFullRangeJoin,
+			&s.selectRange,
+			&s.selectRangeCheck,
+			&s.selectScan,
+			&s.sortMergePasses,
+			&s.sortRange,
+			&s.sortRows,
+			&s.sortScan,
+			&s.noIndexUsed,
+			&s.noGoodIndexUsed,
+			&s.processlistUser,
+			&s.processlistHost,
+			&s.processlistDB,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		samples = append(samples, s)
+	}
+
+	return samples, nil
 }
 
 func query(c mySQLClient, query string) (map[string]string, error) {
