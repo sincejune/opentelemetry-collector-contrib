@@ -115,7 +115,7 @@ func (m *mySQLScraper) scrape(context.Context) (pmetric.Metrics, error) {
 	return m.mb.Emit(), errs.Combine()
 }
 
-// scrape scrapes the mysql db metric stats, transforms them and labels them into a metric slices.
+// scrape scrapes the mysql db query stats, transforms them and labels them into an event slices.
 func (m *mySQLScraper) scrapeLog(context.Context) (plog.Logs, error) {
 	if m.sqlclient == nil {
 		return plog.NewLogs(), errors.New("failed to connect to http client")
