@@ -709,36 +709,23 @@ func (c *mySQLClient) getReplicaStatusStats() ([]ReplicaStatusStats, error) {
 var querySampleTemplate string
 
 func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
-	fmt.Println("Calling getQuerySamples")
-	fmt.Println("Limit:", limit)
 	tmpl := template.Must(template.New("querySample").Option("missingkey=error").Parse(querySampleTemplate))
 	buf := bytes.Buffer{}
 
 	if err := tmpl.Execute(&buf, map[string]any{
 		"limit": limit,
 	}); err != nil {
-		// logger
-		fmt.Println("Error executing getQuerySamples")
-		fmt.Println(err)
-		return nil, nil
+		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	rows, err := c.client.Query(buf.String())
 	if err != nil {
-		fmt.Println("Error executing getQuerySamples")
 		return nil, err
 	}
-	fmt.Println(rows.Columns())
-	fmt.Println(rows.Err())
-	//fmt.Println(rows.ColumnTypes())
-	cols, err := rows.ColumnTypes()
-	for _, col := range cols {
-		fmt.Printf("Column: %s, Type: %s, DBType: %s\n", col.Name(), col.ScanType(), col.DatabaseTypeName())
-	}
+
 	defer rows.Close()
 	var samples []QuerySample
 	for rows.Next() {
-		fmt.Println("Has next item")
 		var s QuerySample
 		err := rows.Scan(
 			&s.currentSchema,
@@ -769,14 +756,10 @@ func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
 			&s.processlistHost,
 			&s.processlistDB,
 		)
-		fmt.Println("After scan")
-		// TODO: the actual db time is string, it can be parsed into int64 somehow.
-		fmt.Println(s.uptime)
 		if err != nil {
-			fmt.Println("Error executing getQuerySamples")
 			return nil, err
 		}
-		// fmt.Println(s.sqlText)
+
 		samples = append(samples, s)
 	}
 
