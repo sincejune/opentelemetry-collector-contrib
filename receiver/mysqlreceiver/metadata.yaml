@@ -198,7 +198,7 @@ attributes:
     type: double
   mysql.uptime:
     description: The server uptime at the time the event occurred, expressed in seconds.
-    type: string
+    type: int
   mysql.timer_end:
     description: The end time of the event, in picoseconds since the Performance Schema timer started.
     type: double

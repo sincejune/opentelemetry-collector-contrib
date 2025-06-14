@@ -668,7 +668,7 @@ query sample event
 | mysql.digest_text | The normalized form of the SQL statement, where literal values are replaced with placeholders. | Any Str |
 | mysql.end_event_id | The event ID of the statement's final event. | Any Int |
 | mysql.timer_start | The start time of the event, in picoseconds since the Performance Schema timer started. | Any Double |
-| mysql.uptime | The server uptime at the time the event occurred, expressed in seconds. | Any Str |
+| mysql.uptime | The server uptime at the time the event occurred, expressed in seconds. | Any Int |
 | mysql.timer_end | The end time of the event, in picoseconds since the Performance Schema timer started. | Any Double |
 | mysql.timer_wait | The total wait time for the event, in picoseconds. | Any Double |
 | mysql.lock_time | The amount of time the statement spent waiting for locks, in picoseconds. | Any Double |

@@ -195,33 +195,33 @@ type ReplicaStatusStats struct {
 }
 
 type QuerySample struct {
-	currentSchema       sql.NullString  // Column: current_schema
-	sqlText             sql.NullString  // Column: sql_text
-	digest              sql.NullString  // Column: digest
-	digestText          sql.NullString  // Column: digest_text
-	endEventID          sql.NullInt64   // Column: end_event_id
-	timerStart          sql.NullFloat64 // Column: timer_start / 1e12
-	uptime              sql.NullString  // Column: uptime
-	timerEnd            sql.NullFloat64 // Column: timer_end / 1e12
-	timerWait           sql.NullFloat64 // Column: timer_wait / 1e12
-	lockTime            sql.NullFloat64 // Column: lock_time / 1e12
-	rowsAffected        uint64          // Column: rows_affected
-	rowsSent            uint64          // Column: rows_sent
-	rowsExamined        uint64          // Column: rows_examined
-	selectFullJoin      uint64          // Column: select_full_join
-	selectFullRangeJoin uint64          // Column: select_full_range_join
-	selectRange         uint64          // Column: select_range
-	selectRangeCheck    uint64          // Column: select_range_check
-	selectScan          uint64          // Column: select_scan
-	sortMergePasses     uint64          // Column: sort_merge_passes
-	sortRange           uint64          // Column: sort_range
-	sortRows            uint64          // Column: sort_rows
-	sortScan            uint64          // Column: sort_scan
-	noIndexUsed         uint64          // Column: no_index_used
-	noGoodIndexUsed     uint64          // Column: no_good_index_used
-	processlistUser     sql.NullString  // Column: processlist_user
-	processlistHost     sql.NullString  // Column: processlist_host
-	processlistDB       sql.NullString  // Column: processlist_db
+	currentSchema       string  // Column: current_schema
+	sqlText             string  // Column: sql_text
+	digest              string  // Column: digest
+	digestText          string  // Column: digest_text
+	endEventID          int64   // Column: end_event_id
+	timerStart          float64 // Column: timer_start / 1e12
+	uptime              int64   // Column: uptime
+	timerEnd            float64 // Column: timer_end / 1e12
+	timerWait           float64 // Column: timer_wait / 1e12
+	lockTime            float64 // Column: lock_time / 1e12
+	rowsAffected        int64   // Column: rows_affected
+	rowsSent            int64   // Column: rows_sent
+	rowsExamined        int64   // Column: rows_examined
+	selectFullJoin      int64   // Column: select_full_join
+	selectFullRangeJoin int64   // Column: select_full_range_join
+	selectRange         int64   // Column: select_range
+	selectRangeCheck    int64   // Column: select_range_check
+	selectScan          int64   // Column: select_scan
+	sortMergePasses     int64   // Column: sort_merge_passes
+	sortRange           int64   // Column: sort_range
+	sortRows            int64   // Column: sort_rows
+	sortScan            int64   // Column: sort_scan
+	noIndexUsed         int64   // Column: no_index_used
+	noGoodIndexUsed     int64   // Column: no_good_index_used
+	processlistUser     string  // Column: processlist_user
+	processlistHost     string  // Column: processlist_host
+	processlistDB       string  // Column: processlist_db
 }
 
 var _ client = (*mySQLClient)(nil)
@@ -731,10 +731,10 @@ func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
 	fmt.Println(rows.Columns())
 	fmt.Println(rows.Err())
 	//fmt.Println(rows.ColumnTypes())
-	//cols, err := rows.ColumnTypes()
-	//for _, col := range cols {
-	//	fmt.Printf("Column: %s, Type: %s\n", col.Name(), col.ScanType())
-	//}
+	cols, err := rows.ColumnTypes()
+	for _, col := range cols {
+		fmt.Printf("Column: %s, Type: %s, DBType: %s\n", col.Name(), col.ScanType(), col.DatabaseTypeName())
+	}
 	defer rows.Close()
 	var samples []QuerySample
 	for rows.Next() {
@@ -769,11 +769,14 @@ func (c *mySQLClient) getQuerySamples(limit uint64) ([]QuerySample, error) {
 			&s.processlistHost,
 			&s.processlistDB,
 		)
+		fmt.Println("After scan")
+		// TODO: the actual db time is string, it can be parsed into int64 somehow.
+		fmt.Println(s.uptime)
 		if err != nil {
 			fmt.Println("Error executing getQuerySamples")
 			return nil, err
 		}
-		//fmt.Println(s.sqlText)
+		// fmt.Println(s.sqlText)
 		samples = append(samples, s)
 	}
 

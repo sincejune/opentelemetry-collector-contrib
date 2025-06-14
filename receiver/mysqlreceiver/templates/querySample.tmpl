@@ -1,12 +1,12 @@
-SELECT current_schema,
+SELECT COALESCE(current_schema, ''),
        sql_text,
-       digest,
+       COALESCE(digest, ''),
        digest_text,
-       end_event_id,
-       timer_start / 1e12,
-       (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'UPTIME') as uptime,
-       timer_end / 1e12,
-       timer_wait / 1e12,
+       COALESCE(end_event_id, 0),
+       COALESCE(timer_start / 1e12, 0),
+       COALESCE((SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'UPTIME'), 0) as uptime,
+       COALESCE(timer_end / 1e12, 0),
+       COALESCE(timer_wait / 1e12, 0),
        lock_time / 1e12,
        rows_affected,
        rows_sent,
@@ -22,9 +22,9 @@ SELECT current_schema,
        sort_scan,
        no_index_used,
        no_good_index_used,
-       processlist_user,
-       processlist_host,
-       processlist_db
+       COALESCE(processlist_user, ''),
+       COALESCE(processlist_host, ''),
+       COALESCE(processlist_db, '')
 FROM performance_schema.events_statements_current as E
          LEFT JOIN performance_schema.threads as T ON E.thread_id = T.thread_id
 WHERE sql_text IS NOT NULL
