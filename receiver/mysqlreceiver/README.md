@@ -27,6 +27,11 @@ This receiver supports MySQL version 8.0 and MariaDB 10.11.
 
 Collecting most metrics requires the ability to execute `SHOW GLOBAL STATUS`.
 
+Collecting query samples requires the `performance_schema` to be enabled:
+```
+GRANT SELECT ON performance_schema.* TO <your-user>@'%';
+```
+
 ## Configuration
 
 
@@ -50,7 +55,7 @@ The following settings are optional:
   - `time_limit` - maximum time from since the statements have been observed last time (default=`24h`)
   - `limit` - limit of records, which is maximum number of generated metrics (default=`250`)
 - `query_sample_collection`: Additional configuration for query sample collection(`db.server.query_sample` event):
-  - `max_rows_per_query` - maximum number of rows to collect per scrape (default=`1000`)
+  - `max_rows_per_query` - maximum number of rows to collect per scrape (default=`100`)
 
 ### Example Configuration
 
