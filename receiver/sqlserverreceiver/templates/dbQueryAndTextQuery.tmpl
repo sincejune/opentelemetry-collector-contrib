@@ -24,6 +24,7 @@ SELECT qs.*,
 			 ((CASE statement_end_offset
 				   WHEN -1 THEN DATALENGTH(st.text)
 				   ELSE stats.statement_end_offset END - stats.statement_start_offset) / 2) + 1) AS query_text,
+    st.text as text,
 	ISNULL(qp.query_plan, '') AS query_plan
 FROM qstats AS qs
 		INNER JOIN sys.dm_exec_query_stats AS stats on qs.query_plan_handle = stats.plan_handle

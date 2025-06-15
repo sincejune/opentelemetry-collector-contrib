@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -737,6 +738,35 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 
 			resourcesAdded = true
 		}
+
+		// TODO: we need to support various SQL comment formats
+		// In this case, we are only extracting SQL comments that start with `/* ... */`
+		peerServiceVal := ""
+		sqlcommenters, _ := extractSQLComments(row["text"])
+		if len(sqlcommenters) == 1 {
+			commenter := sqlcommenters[0]
+			trimmed := strings.TrimPrefix(commenter, "/*")
+			trimmed = strings.TrimSuffix(trimmed, "*/")
+			parts := strings.Split(trimmed, ",")
+			for _, part := range parts {
+				singleCommenter := strings.Split(part, "=")
+				if len(singleCommenter) != 2 {
+					continue
+				}
+				key := singleCommenter[0]
+				// we only support `service.name` for now
+				if key != "service.name" {
+					continue
+				}
+				value := singleCommenter[1]
+				value = strings.TrimPrefix(value, "'")
+				value = strings.TrimSuffix(value, "'")
+				peerServiceVal = value
+				fmt.Println("Found SQL Commenter:", key, "=", value)
+			}
+		}
+
+		// testing only
 		s.lb.RecordDbServerTopQueryEvent(
 			context.Background(),
 			timestamp,
@@ -754,7 +784,8 @@ func (s *sqlServerScraperHelper) recordDatabaseQueryTextAndPlan(ctx context.Cont
 			totalGrantVal.(int64),
 			s.config.Server,
 			int64(s.config.Port),
-			dbSystemNameVal)
+			dbSystemNameVal,
+			peerServiceVal)
 	}
 	return resources, errors.Join(errs...)
 }
@@ -1034,6 +1065,30 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			clientAddressVal = row[clientAddress]
 		}
 
+		peerServiceVal := ""
+		sqlcommenters, _ := extractSQLComments(row["text"])
+		if len(sqlcommenters) == 1 {
+			commenter := sqlcommenters[0]
+			trimmed := strings.TrimPrefix(commenter, "/*")
+			trimmed = strings.TrimSuffix(trimmed, "*/")
+			parts := strings.Split(trimmed, ",")
+			for _, part := range parts {
+				singleCommenter := strings.Split(part, "=")
+				if len(singleCommenter) != 2 {
+					continue
+				}
+				key := singleCommenter[0]
+				// we only support `service.name` for now
+				if key != "service.name" {
+					continue
+				}
+				value := singleCommenter[1]
+				value = strings.TrimPrefix(value, "'")
+				value = strings.TrimSuffix(value, "'")
+				peerServiceVal = value
+				fmt.Println("Found SQL Commenter:", key, "=", value)
+			}
+		}
 		s.lb.RecordDbServerQuerySampleEvent(
 			contextFromQuery,
 			timestamp, clientAddressVal, clientPortVal,
@@ -1049,6 +1104,7 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 			sessionIDVal, sessionStatusVal,
 			totalElapsedTimeSecondVal, transactionIDVal, transactionIsolationLevelVal,
 			waitResourceVal, waitTimeSecondVal, waitTypeVal, writesVal, usernameVal,
+			peerServiceVal,
 		)
 
 		if !resourcesAdded {
@@ -1061,4 +1117,54 @@ func (s *sqlServerScraperHelper) recordDatabaseSampleQuery(ctx context.Context) 
 		}
 	}
 	return resources, errors.Join(errs...)
+}
+
+func extractSQLComments(text string) ([]string, string) {
+	if len(text) == 0 {
+		return []string{}, ""
+	}
+
+	inSingleLineComment := false
+	inMultiLineComment := false
+	var commentStart int
+	var result []string
+	var strippedText strings.Builder
+
+	for i := 0; i < len(text); i++ {
+		if inMultiLineComment {
+			// Handle multi-line comments
+			if i < len(text)-1 && text[i:i+2] == "*/" {
+				inMultiLineComment = false
+				// Extract the multi-line comment, strip extra spaces/newlines, and append
+				lines := strings.Split(text[commentStart:i+2], "\n")
+				for j := range lines {
+					lines[j] = strings.TrimSpace(lines[j])
+				}
+				result = append(result, strings.Join(lines, " "))
+			}
+		} else if inSingleLineComment {
+			// Handle single-line comments
+			if text[i] == '\n' {
+				inSingleLineComment = false
+				// Extract the single-line comment and append it after trimming
+				result = append(result, strings.TrimRight(text[commentStart:i], " \t"))
+			}
+		} else {
+			// Detect the start of a single-line comment
+			if i < len(text)-1 && text[i:i+2] == "--" {
+				inSingleLineComment = true
+				commentStart = i
+			} else if i < len(text)-1 && text[i:i+2] == "/*" {
+				// Detect the start of a multi-line comment
+				inMultiLineComment = true
+				commentStart = i
+			} else {
+				// Append non-comment characters to the stripped text
+				strippedText.WriteByte(text[i])
+			}
+		}
+	}
+
+	// Return the list of comments and the stripped SQL text
+	return result, strippedText.String()
 }
