@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -537,4 +538,13 @@ func TestRecordDatabaseSampleQuery(t *testing.T) {
 			assert.NoError(t, errs)
 		})
 	}
+}
+
+func TestExtractSQLComments(t *testing.T) {
+	results, stripped := extractSQLComments("/*service.name='service',app='app'*/select * from sys.dm_exec_requests")
+	fmt.Println(results)
+	for _, s := range results {
+		fmt.Println(s)
+	}
+	fmt.Println(stripped)
 }
