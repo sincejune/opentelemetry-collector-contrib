@@ -590,6 +590,7 @@ query sample
 | sqlserver.wait_type | Type of wait encountered by the request. Empty if none. | Any Str |
 | sqlserver.writes | Number of writes performed by the query. | Any Int |
 | user.name | Login name associated with the SQL Server session. | Any Str |
+| peer.service | The name of the service that the client is connecting to. | Any Str |
 
 ### db.server.top_query
 
@@ -614,6 +615,7 @@ top query
 | server.address | The network address of the server hosting the database. | Any Str |
 | server.port | The port number on which the server is listening. | Any Int |
 | db.system.name | The database management system (DBMS) product as identified by the client instrumentation. | Any Str |
+| peer.service | The name of the service that the client is connecting to. | Any Str |
 
 ## Resource Attributes
 
