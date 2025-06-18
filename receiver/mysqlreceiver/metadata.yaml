@@ -194,19 +194,19 @@ attributes:
     description: The event ID of the statement's final event.
     type: int
   mysql.timer_start:
-    description: The start time of the event, in picoseconds since the Performance Schema timer started.
+    description: The start time of the event, in seconds since the Performance Schema timer started.
     type: double
   mysql.uptime:
     description: The server uptime at the time the event occurred, expressed in seconds.
     type: int
   mysql.timer_end:
-    description: The end time of the event, in picoseconds since the Performance Schema timer started.
+    description: The end time of the event, in seconds since the Performance Schema timer started.
     type: double
   mysql.timer_wait:
-    description: The total wait time for the event, in picoseconds.
+    description: The total wait time for the event, in seconds.
     type: double
   mysql.lock_time:
-    description: The amount of time the statement spent waiting for locks, in picoseconds.
+    description: The amount of time the statement spent waiting for locks, in seconds.
     type: double
   mysql.rows_affected:
     description: The number of rows affected by the statement.
