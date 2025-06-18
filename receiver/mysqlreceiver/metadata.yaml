@@ -4,6 +4,7 @@ status:
   class: receiver
   stability:
     beta: [metrics]
+    development: [logs]
   distributions: [contrib]
   codeowners:
     active: [antonblock]
@@ -173,6 +174,124 @@ attributes:
     description: The table size types.
     type: string
     enum: [data, index]
+  db.system.name:
+    description: The name of the database system.
+    type: string
+    enum: [mysql]
+  mysql.current_schema:
+    description: The name of the currently selected schema (database) for the thread executing the statement.
+    type: string
+  mysql.sql_text:
+    description: The SQL statement text for the event.
+    type: string
+  mysql.digest:
+    description: A hash value computed from the normalized statement text, used to group similar statements.
+    type: string
+  mysql.digest_text:
+    description: The normalized form of the SQL statement, where literal values are replaced with placeholders.
+    type: string
+  mysql.end_event_id:
+    description: The event ID of the statement's final event.
+    type: int
+  mysql.timer_start:
+    description: The start time of the event, in seconds since the Performance Schema timer started.
+    type: double
+  mysql.uptime:
+    description: The server uptime at the time the event occurred, expressed in seconds.
+    type: int
+  mysql.timer_end:
+    description: The end time of the event, in seconds since the Performance Schema timer started.
+    type: double
+  mysql.timer_wait:
+    description: The total wait time for the event, in seconds.
+    type: double
+  mysql.lock_time:
+    description: The amount of time the statement spent waiting for locks, in seconds.
+    type: double
+  mysql.rows_affected:
+    description: The number of rows affected by the statement.
+    type: int
+  mysql.rows_sent:
+    description: The number of rows sent to the client by the statement.
+    type: int
+  mysql.rows_examined:
+    description: The number of rows read or examined by the statement.
+    type: int
+  mysql.select_full_join:
+    description: The number of full join operations performed by the statement.
+    type: int
+  mysql.select_full_range_join:
+    description: The number of full range join operations performed by the statement.
+    type: int
+  mysql.select_range:
+    description: The number of range operations performed by the statement.
+    type: int
+  mysql.select_range_check:
+    description: The number of range-check operations performed by the statement.
+    type: int
+  mysql.select_scan:
+    description: The number of table scans performed by the statement.
+    type: int
+  mysql.sort_merge_passes:
+    description: The number of merge passes performed during sorting by the statement.
+    type: int
+  mysql.sort_range:
+    description: The number of range sorts performed by the statement.
+    type: int
+  mysql.sort_rows:
+    description: The number of rows sorted by the statement.
+    type: int
+  mysql.sort_scan:
+    description: The number of table scans performed during sorting by the statement.
+    type: int
+  mysql.no_index_used:
+    description: Indicates whether the statement executed without using an index. 1 if true, 0 otherwise.
+    type: int
+  mysql.no_good_index_used:
+    description: Indicates whether the statement executed without using a "good" index. 1 if true, 0 otherwise.
+    type: int
+  mysql.processlist_user:
+    description: The user associated with the thread that executed the statement.
+    type: string
+  mysql.processlist_host:
+    description: The host from which the user connected.
+    type: string
+  mysql.processlist_db:
+    description: The default database for the thread executing the statement.
+    type: string
+events:
+  db.server.query_sample:
+    enabled: true
+    description: query sample event
+    attributes:
+      - db.system.name
+      - mysql.current_schema
+      - mysql.sql_text
+      - mysql.digest
+      - mysql.digest_text
+      - mysql.end_event_id
+      - mysql.timer_start
+      - mysql.uptime
+      - mysql.timer_end
+      - mysql.timer_wait
+      - mysql.lock_time
+      - mysql.rows_affected
+      - mysql.rows_sent
+      - mysql.rows_examined
+      - mysql.select_full_join
+      - mysql.select_full_range_join
+      - mysql.select_range
+      - mysql.select_range_check
+      - mysql.select_scan
+      - mysql.sort_merge_passes
+      - mysql.sort_range
+      - mysql.sort_rows
+      - mysql.sort_scan
+      - mysql.no_index_used
+      - mysql.no_good_index_used
+      - mysql.processlist_user
+      - mysql.processlist_host
+      - mysql.processlist_db
 
 metrics:
   mysql.buffer_pool.pages:

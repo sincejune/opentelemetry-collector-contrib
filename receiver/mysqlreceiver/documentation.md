@@ -643,6 +643,53 @@ The number of hits, misses or overflows for open tables cache lookups.
 | ---- | ----------- | ------ |
 | status | The status of cache access. | Str: ``hit``, ``miss``, ``overflow`` |
 
+## Default Events
+
+The following events are emitted by default. Each of them can be disabled by applying the following configuration:
+
+```yaml
+events:
+  <event_name>:
+    enabled: false
+```
+
+### db.server.query_sample
+
+query sample event
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| db.system.name | The name of the database system. | Str: ``mysql`` |
+| mysql.current_schema | The name of the currently selected schema (database) for the thread executing the statement. | Any Str |
+| mysql.sql_text | The SQL statement text for the event. | Any Str |
+| mysql.digest | A hash value computed from the normalized statement text, used to group similar statements. | Any Str |
+| mysql.digest_text | The normalized form of the SQL statement, where literal values are replaced with placeholders. | Any Str |
+| mysql.end_event_id | The event ID of the statement's final event. | Any Int |
+| mysql.timer_start | The start time of the event, in seconds since the Performance Schema timer started. | Any Double |
+| mysql.uptime | The server uptime at the time the event occurred, expressed in seconds. | Any Int |
+| mysql.timer_end | The end time of the event, in seconds since the Performance Schema timer started. | Any Double |
+| mysql.timer_wait | The total wait time for the event, in seconds. | Any Double |
+| mysql.lock_time | The amount of time the statement spent waiting for locks, in seconds. | Any Double |
+| mysql.rows_affected | The number of rows affected by the statement. | Any Int |
+| mysql.rows_sent | The number of rows sent to the client by the statement. | Any Int |
+| mysql.rows_examined | The number of rows read or examined by the statement. | Any Int |
+| mysql.select_full_join | The number of full join operations performed by the statement. | Any Int |
+| mysql.select_full_range_join | The number of full range join operations performed by the statement. | Any Int |
+| mysql.select_range | The number of range operations performed by the statement. | Any Int |
+| mysql.select_range_check | The number of range-check operations performed by the statement. | Any Int |
+| mysql.select_scan | The number of table scans performed by the statement. | Any Int |
+| mysql.sort_merge_passes | The number of merge passes performed during sorting by the statement. | Any Int |
+| mysql.sort_range | The number of range sorts performed by the statement. | Any Int |
+| mysql.sort_rows | The number of rows sorted by the statement. | Any Int |
+| mysql.sort_scan | The number of table scans performed during sorting by the statement. | Any Int |
+| mysql.no_index_used | Indicates whether the statement executed without using an index. 1 if true, 0 otherwise. | Any Int |
+| mysql.no_good_index_used | Indicates whether the statement executed without using a "good" index. 1 if true, 0 otherwise. | Any Int |
+| mysql.processlist_user | The user associated with the thread that executed the statement. | Any Str |
+| mysql.processlist_host | The host from which the user connected. | Any Str |
+| mysql.processlist_db | The default database for the thread executing the statement. | Any Str |
+
 ## Resource Attributes
 
 | Name | Description | Values | Enabled |

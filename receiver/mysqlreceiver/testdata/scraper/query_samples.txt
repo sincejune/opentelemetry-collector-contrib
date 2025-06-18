@@ -1,0 +1,1 @@
+mysql	SELECT * FROM performance_schema.events_statements_current	aa3ae94d6228db4cea1319abe4de481744048f78be0c8be25fee193c313c7acc	digest_text	729	415394.269940273	415398	415394.283257564	0.013317291	0.000065	0	2	7	0	0	0	0	1	0	0	2	1	1	0	root	172.19.0.5	mysql
