@@ -220,10 +220,20 @@ attributes:
   network.peer.port:
     description: TCP port used by the peer client.
     type: int
+  mysql.statements.time:
+    description: The time in seconds that the statement took to execute.
+    type: double
 
 events:
+  db.server.top_query:
+    enabled: false
+    description: top query event
+    attributes:
+      - db.system.name
+      - db.query.text
+      - mysql.statements.time
   db.server.query_sample:
-    enabled: true
+    enabled: false
     description: query sample event
     attributes:
       - db.system.name

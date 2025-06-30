@@ -96,6 +96,8 @@ all_set:
   events:
     db.server.query_sample:
       enabled: true
+    db.server.top_query:
+      enabled: true
   resource_attributes:
     mysql.instance.endpoint:
       enabled: true
@@ -195,6 +197,8 @@ none_set:
       enabled: false
   events:
     db.server.query_sample:
+      enabled: false
+    db.server.top_query:
       enabled: false
   resource_attributes:
     mysql.instance.endpoint:

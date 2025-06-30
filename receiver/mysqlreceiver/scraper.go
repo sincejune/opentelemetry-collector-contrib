@@ -126,6 +126,8 @@ func (m *mySQLScraper) scrapeLog(context.Context) (plog.Logs, error) {
 
 	now := pcommon.NewTimestampFromTime(time.Now())
 
+	m.scrapeTopQueries(now, errs)
+
 	m.scrapeQuerySamples(now, errs)
 
 	return m.lb.Emit(), errs.Combine()
@@ -601,6 +603,26 @@ func (m *mySQLScraper) scrapeReplicaStatusStats(now pcommon.Timestamp) {
 		}
 
 		m.mb.RecordMysqlReplicaSQLDelayDataPoint(now, s.sqlDelay)
+	}
+}
+
+func (m *mySQLScraper) scrapeTopQueries(now pcommon.Timestamp, errs *scrapererror.ScrapeErrors) {
+	// TODO rename the parameter
+	topQueries, err := m.sqlclient.getTopQueries(m.config.QuerySampleCollection.MaxRowsPerQuery)
+
+	if err != nil {
+		m.logger.Error("Failed to fetch top queries", zap.Error(err))
+		errs.AddPartial(1, err)
+		return
+	}
+
+	for _, tp := range topQueries {
+		m.lb.RecordDbServerTopQueryEvent(
+			context.Background(),
+			now,
+			metadata.AttributeDbSystemNameMysql,
+			tp.digest,
+			123)
 	}
 }
 

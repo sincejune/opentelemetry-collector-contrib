@@ -29,6 +29,7 @@ type client interface {
 	getStatementEventsStats() ([]statementEventStats, error)
 	getTableLockWaitEventStats() ([]tableLockWaitEventStats, error)
 	getReplicaStatusStats() ([]replicaStatusStats, error)
+	getTopQueries(uint64) ([]topQuery, error)
 	getQuerySamples(uint64) ([]querySample, error)
 	Close() error
 }
@@ -206,6 +207,10 @@ type querySample struct {
 	eventID            int64
 	waitEvent          string
 	waitTime           float64
+}
+
+type topQuery struct {
+	digest string
 }
 
 var _ client = (*mySQLClient)(nil)
@@ -687,6 +692,43 @@ func (c *mySQLClient) getReplicaStatusStats() ([]replicaStatusStats, error) {
 	}
 
 	return stats, nil
+}
+
+//go:embed templates/topQuery.tmpl
+var topQueryTemplate string
+
+func (c *mySQLClient) getTopQueries(limit uint64) ([]topQuery, error) {
+	tmpl := template.Must(template.New("topQuery").Option("missingkey=error").Parse(topQueryTemplate))
+	buf := bytes.Buffer{}
+
+	if err := tmpl.Execute(&buf, map[string]any{
+		"limit": limit,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	rows, err := c.client.Query(buf.String())
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var topQueries []topQuery
+	for rows.Next() {
+		var q topQuery
+
+		err := rows.Scan(
+			&q.digest,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		topQueries = append(topQueries, q)
+	}
+
+	return topQueries, nil
 }
 
 //go:embed templates/querySample.tmpl
