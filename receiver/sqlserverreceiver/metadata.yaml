@@ -218,6 +218,9 @@ attributes:
   user.name:
     description: Login name associated with the SQL Server session.
     type: string
+  peer.service:
+    description: The name of the service that the client is connecting to.
+    type: string
 
 events:
   db.server.top_query:
@@ -239,6 +242,7 @@ events:
       - server.address
       - server.port
       - db.system.name
+      - peer.service
   db.server.query_sample:
     enabled: false
     description: query sample
@@ -276,6 +280,7 @@ events:
       - sqlserver.wait_type
       - sqlserver.writes
       - user.name
+      - peer.service
 
 metrics:
   sqlserver.user.connection.count:

@@ -19,6 +19,7 @@ SELECT TOP(@top)
           END - r.statement_start_offset
         ) / 2
       ) + 1) AS statement_text,
+  o.TEXT as text,
   r.blocking_session_id,
   ISNULL(r.wait_type, '') AS wait_type,
   r.wait_time,
