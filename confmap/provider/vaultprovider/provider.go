@@ -75,7 +75,7 @@ func extractKey(uri string) (string, string, error) {
 		return "", "", invalidSchemeError
 	}
 	withoutScheme := uri[len(schemeName+":"):]
-	indexOfKeyPart := strings.LastIndex(withoutScheme, ":")
+	indexOfKeyPart := strings.LastIndex(withoutScheme, ".")
 
 	return withoutScheme[0:indexOfKeyPart], withoutScheme[indexOfKeyPart+1:], nil
 }
