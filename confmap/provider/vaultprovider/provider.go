@@ -63,8 +63,7 @@ func (p provider) Scheme() string {
 }
 
 func (p provider) Shutdown(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func extractKey(uri string) (string, string, error) {
