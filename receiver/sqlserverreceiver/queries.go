@@ -296,111 +296,157 @@ func getSQLServerPerformanceCounterQuery(instanceName string) string {
 const sqlServerProperties = `
 SET DEADLOCK_PRIORITY -10;
 IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4,5,8) BEGIN /*NOT IN Standard,Enterprise,Express,Azure SQL Database, Azure SQL Managed Instance*/
-	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise, Express, Azure SQL Database or Azure SQL Managed Instance. This query is only supported on these editions.';
-	RAISERROR (@ErrorMessage,11,1)
-	RETURN
+    DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise, Express, Azure SQL Database or Azure SQL Managed Instance. This query is only supported on these editions.';
+    RAISERROR (@ErrorMessage,11,1)
+    RETURN
 END
 
 DECLARE
-	 @SqlStatement AS nvarchar(max) = ''
-	,@EngineEdition INT = CAST(SERVERPROPERTY('EngineEdition') AS INT)
-	,@MajorMinorVersion AS int = CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),4) AS int)*100 + CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),3) AS int)
-	,@Columns AS nvarchar(MAX) = ''
-	-- variables that are unavailable on EngineEdition 5 or 8
-	,@ServiceName NVARCHAR(MAX) = ''
-	,@ServerMemory BIGINT = 0
-	,@AvailableServerMemory BIGINT = 0
-	,@ForceEncryption INT = 0
-	,@DynamicportNo NVARCHAR(50) = NULL
-	,@StaticportNo NVARCHAR(50) = NULL
+     @SqlStatement AS nvarchar(max) = ''
+    ,@EngineEdition INT = CAST(SERVERPROPERTY('EngineEdition') AS INT)
+    ,@MajorMinorVersion AS int = CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),4) AS int)*100 + CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),3) AS int)
+    ,@Columns AS nvarchar(MAX) = ''
+    -- variables that are unavailable on EngineEdition 5 or 8
+    ,@ServiceName NVARCHAR(MAX) = ''
+    ,@ServerMemory BIGINT = 0
+    ,@AvailableServerMemory BIGINT = 0
+    ,@ForceEncryption INT = 0
+    -- Merged port variables
+    ,@PortValue NVARCHAR(50) = NULL -- Will hold the determined port number
+    ,@PortType NVARCHAR(10) = NULL  -- Will hold 'Dynamic', 'Static', or NULL
+    -- Removed @DynamicportNo and @StaticportNo as they will be handled internally
 
 IF CAST(SERVERPROPERTY('ProductVersion') AS varchar(50)) >= '10.50.2500.0'
-	SET @Columns = N'
-	,CASE [virtual_machine_type_desc]
-		WHEN ''NONE'' THEN ''PHYSICAL Machine''
-		ELSE [virtual_machine_type_desc]
-	END AS [hardware_type]'
+    SET @Columns = N'
+    ,CASE [virtual_machine_type_desc]
+        WHEN ''NONE'' THEN ''PHYSICAL Machine''
+        ELSE [virtual_machine_type_desc]
+    END AS [hardware_type]'
 
-IF @EngineEdition IN (2, 3, 4, 8)
+IF @EngineEdition IN (2, 3, 4, 8) -- Applicable for on-premises, VM, and Managed Instance
 BEGIN
--- Populate physical memory details using sys.dm_os_sys_memory (only available on 2,3,4,8)
-SELECT
-	   @ServerMemory = total_physical_memory_kb
-	  ,@AvailableServerMemory = available_physical_memory_kb
-FROM sys.dm_os_sys_memory
+    DECLARE @DynamicSetVarsSql NVARCHAR(MAX);
 
-SET @ServiceName = @@SERVICENAME
+    SET @DynamicSetVarsSql = N'
+        -- Declare local variables for the dynamic SQL scope
+        DECLARE @EngineEdition_local INT = CAST(SERVERPROPERTY(''EngineEdition'') AS INT);
+        DECLARE @ServiceName_local NVARCHAR(128) = NULL;
+        DECLARE @ServerMemory_local BIGINT = NULL;
+        DECLARE @AvailableServerMemory_local BIGINT = NULL;
+        DECLARE @ForceEncryption_local INT = NULL;
+        -- Temporary variables to read dynamic and static ports
+        DECLARE @DynamicportNo_temp NVARCHAR(50) = NULL;
+        DECLARE @StaticportNo_temp NVARCHAR(50) = NULL;
 
-IF @EngineEdition IN (2, 3, 4)
-BEGIN
-EXEC [xp_instance_regread]
-	 @rootkey = ''HKEY_LOCAL_MACHINE''
-	,@key = ''SOFTWARE\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib''
-	,@value_name = ''ForceEncryption''
-	,@value = @ForceEncryption OUTPUT;
+        -- @@SERVICENAME is available on 2,3,4,8 but returns NULL for 8.
+        SET @ServiceName_local = @@SERVICENAME;
 
-EXEC [xp_instance_regread]
-	 @rootkey = ''HKEY_LOCAL_MACHINE''
-	,@key = ''Software\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib\Tcp\IpAll''
-	,@value_name = ''TcpDynamicPorts''
-	,@value = @DynamicportNo OUTPUT
+        -- sys.dm_os_sys_memory and xp_instance_regread are ONLY available on 2,3,4.
+        IF @EngineEdition_local IN (2, 3, 4)
+        BEGIN
+            SELECT
+                @ServerMemory_local = total_physical_memory_kb,
+                @AvailableServerMemory_local = available_physical_memory_kb
+            FROM sys.dm_os_sys_memory;
 
-EXEC [xp_instance_regread]
-	  @rootkey = ''HKEY_LOCAL_MACHINE''
-     ,@key = ''Software\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib\Tcp\IpAll''
-     ,@value_name = ''TcpPort''
-     ,@value = @StaticportNo OUTPUT
-END
+            EXEC [xp_instance_regread]
+                @rootkey = ''HKEY_LOCAL_MACHINE'',
+                @key = ''SOFTWARE\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib'',
+                @value_name = ''ForceEncryption'',
+                @value = @ForceEncryption_local OUTPUT;
+
+            EXEC [xp_instance_regread]
+                @rootkey = ''HKEY_LOCAL_MACHINE'',
+                @key = ''Software\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib\Tcp\IpAll'',
+                @value_name = ''TcpDynamicPorts'',
+                @value = @DynamicportNo_temp OUTPUT; -- Read into temporary variable
+
+            EXEC [xp_instance_regread]
+                @rootkey = ''HKEY_LOCAL_MACHINE'',
+                @key = ''Software\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib\Tcp\IpAll'',
+                @value_name = ''TcpPort'',
+                @value = @StaticportNo_temp OUTPUT; -- Read into temporary variable
+        END;
+
+        -- Calculate the single PortValue and PortType based on temporary variables
+        SET @PortValue_OUT = COALESCE(@DynamicportNo_temp, @StaticportNo_temp);
+        SET @PortType_OUT = IIF(@DynamicportNo_temp IS NOT NULL, ''Dynamic'', IIF(@StaticportNo_temp IS NOT NULL, ''Static'', NULL));
+
+        -- Assign values to the OUTPUT parameters
+        SELECT
+            @ServiceName_OUT = ISNULL(@ServiceName_local, ''''),
+            @ServerMemory_OUT = ISNULL(@ServerMemory_local, 0),
+            @AvailableServerMemory_OUT = ISNULL(@AvailableServerMemory_local, 0),
+            @ForceEncryption_OUT = ISNULL(@ForceEncryption_local, 0),
+            @PortValue_OUT = @PortValue_OUT, -- Assigning calculated value
+            @PortType_OUT = @PortType_OUT;   -- Assigning calculated value
+    ';
+
+    -- Execute the dynamic SQL, passing the outer variables as OUTPUT parameters
+    EXEC sp_executesql
+        @DynamicSetVarsSql,
+        N'@ServiceName_OUT NVARCHAR(MAX) OUTPUT,
+          @ServerMemory_OUT BIGINT OUTPUT,
+          @AvailableServerMemory_OUT BIGINT OUTPUT,
+          @ForceEncryption_OUT INT OUTPUT,
+          @PortValue_OUT NVARCHAR(50) OUTPUT, -- New output parameter
+          @PortType_OUT NVARCHAR(10) OUTPUT',  -- New output parameter
+        @ServiceName_OUT = @ServiceName OUTPUT,
+        @ServerMemory_OUT = @ServerMemory OUTPUT,
+        @AvailableServerMemory_OUT = @AvailableServerMemory OUTPUT,
+        @ForceEncryption_OUT = @ForceEncryption OUTPUT,
+        @PortValue_OUT = @PortValue OUTPUT,   -- Assign to outer variable
+        @PortType_OUT = @PortType OUTPUT;     -- Assign to outer variable
 END
 
 SET @SqlStatement = '
 SELECT
-	 ''sqlserver_server_properties'' AS [measurement]
-	,REPLACE(@@SERVERNAME,''\'','':'') AS [sql_instance]
-	,HOST_NAME() AS [computer_name]
-	,@ServiceName AS [service_name] -- Will be empty on Azure SQL DB (5)
-	,si.[cpu_count]
-	,@ServerMemory AS [server_memory] -- Will be 0 on Azure SQL DB (5)
-	,@AvailableServerMemory AS [available_server_memory] -- Will be 0 on Azure SQL DB (5)
-	,SERVERPROPERTY(''Edition'') AS [sku]
-	,CAST(SERVERPROPERTY(''EngineEdition'') AS int) AS [engine_edition]
-	,DATEDIFF(MINUTE,si.[sqlserver_start_time],GETDATE()) AS [uptime]
-	,SERVERPROPERTY(''ProductVersion'') AS [sql_version]
-	,SERVERPROPERTY(''IsClustered'') AS [instance_type]
-	,SERVERPROPERTY(''IsHadrEnabled'') AS [is_hadr_enabled]
-	,LEFT(@@VERSION,CHARINDEX('' - '',@@VERSION)) AS [sql_version_desc]
-	,@ForceEncryption AS [ForceEncryption] -- Will be 0 on Azure SQL DB/MI (5,8)
-	,COALESCE(@DynamicportNo,@StaticportNo, '') AS [Port] -- Will be empty on Azure SQL DB/MI (5,8)
-	,IIF(@DynamicportNo IS NOT NULL, ''Dynamic'', IIF(@StaticportNo IS NOT NULL, ''Static'', '') AS [PortType] -- Will be ''Dynamic'' or ''Static'' on 2,3,4, empty on 5,8 if ports are null
-	,dbs.[db_online]
-	,dbs.[db_restoring]
-	,dbs.[db_recovering]
-	,dbs.[db_recoveryPending]
-	,dbs.[db_suspect]
-	,dbs.[db_offline]'
-	+ @Columns + N'
-	FROM sys.[dm_os_sys_info] AS si
-	CROSS APPLY (
-		SELECT
-			 SUM(CASE WHEN [state] = 0 THEN 1 ELSE 0 END) AS [db_online]
-			,SUM(CASE WHEN [state] = 1 THEN 1 ELSE 0 END) AS [db_restoring]
-			,SUM(CASE WHEN [state] = 2 THEN 1 ELSE 0 END) AS [db_recovering]
-			,SUM(CASE WHEN [state] = 3 THEN 1 ELSE 0 END) AS [db_recoveryPending]
-			,SUM(CASE WHEN [state] = 4 THEN 1 ELSE 0 END) AS [db_suspect]
-			,SUM(CASE WHEN [state] IN (6,10) THEN 1 ELSE 0 END) AS [db_offline]
-		FROM sys.databases
-	) AS dbs
-%s'
+     ''sqlserver_server_properties'' AS [measurement]
+    ,REPLACE(@@SERVERNAME,''\'','':'') AS [sql_instance]
+    ,HOST_NAME() AS [computer_name]
+    ,@ServiceName AS [service_name]
+    ,si.[cpu_count]
+    ,@ServerMemory AS [server_memory]
+    ,@AvailableServerMemory AS [available_server_memory]
+    ,SERVERPROPERTY(''Edition'') AS [sku]
+    ,CAST(SERVERPROPERTY(''EngineEdition'') AS int) AS [engine_edition]
+    ,DATEDIFF(MINUTE,si.[sqlserver_start_time],GETDATE()) AS [uptime]
+    ,SERVERPROPERTY(''ProductVersion'') AS [sql_version]
+    ,SERVERPROPERTY(''IsClustered'') AS [instance_type]
+    ,SERVERPROPERTY(''IsHadrEnabled'') AS [is_hadr_enabled]
+    ,LEFT(@@VERSION,CHARINDEX('' - '',@@VERSION)) AS [sql_version_desc]
+    ,@ForceEncryption AS [ForceEncryption]
+    ,@PortValue AS [Port] -- Use the merged port value
+    ,@PortType AS [PortType] -- Use the determined port type
+    ,dbs.[db_online]
+    ,dbs.[db_restoring]
+    ,dbs.[db_recovering]
+    ,dbs.[db_recoveryPending]
+    ,dbs.[db_suspect]
+    ,dbs.[db_offline]'
+    + @Columns + N'
+    FROM sys.[dm_os_sys_info] AS si
+    CROSS APPLY (
+        SELECT
+             SUM(CASE WHEN [state] = 0 THEN 1 ELSE 0 END) AS [db_online]
+            ,SUM(CASE WHEN [state] = 1 THEN 1 ELSE 0 END) AS [db_restoring]
+            ,SUM(CASE WHEN [state] = 2 THEN 1 ELSE 0 END) AS [db_recovering]
+            ,SUM(CASE WHEN [state] = 3 THEN 1 ELSE 0 END) AS [db_recoveryPending]
+            ,SUM(CASE WHEN [state] = 4 THEN 1 ELSE 0 END) AS [db_suspect]
+            ,SUM(CASE WHEN [state] IN (6,10) THEN 1 ELSE 0 END) AS [db_offline]
+        FROM sys.databases
+    ) AS dbs
+%s';
 
 EXEC sp_executesql
-	 @SqlStatement
-	,N'@ServiceName NVARCHAR(MAX), @ServerMemory BIGINT, @AvailableServerMemory BIGINT, @ForceEncryption INT, @DynamicportNo NVARCHAR(50), @StaticportNo NVARCHAR(50)'
-	,@ServiceName = @ServiceName
-	,@ServerMemory = @ServerMemory
-	,@AvailableServerMemory = @AvailableServerMemory
-	,@ForceEncryption = @ForceEncryption
-	,@DynamicportNo = @DynamicportNo
-	,@StaticportNo = @StaticportNo
+     @SqlStatement
+    ,N'@ServiceName NVARCHAR(MAX), @ServerMemory BIGINT, @AvailableServerMemory BIGINT, @ForceEncryption INT, @PortValue NVARCHAR(50), @PortType NVARCHAR(10)' -- Updated parameter list
+    ,@ServiceName = @ServiceName
+    ,@ServerMemory = @ServerMemory
+    ,@AvailableServerMemory = @AvailableServerMemory
+    ,@ForceEncryption = @ForceEncryption
+    ,@PortValue = @PortValue -- Pass the merged port value
+    ,@PortType = @PortType;   -- Pass the determined port type
 `
 
 func getSQLServerPropertiesQuery(instanceName string) string {
