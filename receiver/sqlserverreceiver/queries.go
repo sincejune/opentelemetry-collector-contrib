@@ -14,21 +14,38 @@ import (
 // Please use getSQLServerDatabaseIOQuery
 const sqlServerDatabaseIOQuery = `
 SET DEADLOCK_PRIORITY -10;
-IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4) BEGIN /*NOT IN Standard,Enterprise,Express*/
-	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard,Enterprise or Express. This query is only supported on these editions.';
+IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4,5,8) BEGIN /*NOT IN Standard,Enterprise,Express,Azure SQL Database, Azure SQL Managed Instance*/
+	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise, Express, Azure SQL Database or Azure SQL Managed Instance. This query is only supported on these editions.';
 	RAISERROR (@ErrorMessage,11,1)
 	RETURN
 END
 
 DECLARE
 	 @SqlStatement AS nvarchar(max)
+	,@EngineEdition AS INT = CAST(SERVERPROPERTY('EngineEdition') AS INT)
 	,@MajorMinorVersion AS int = CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),4) AS int) * 100 + CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),3) AS int)
 	,@Columns AS nvarchar(max) = ''
 	,@Tables AS nvarchar(max) = ''
+	,@JoinClause AS nvarchar(max) = ''
 IF @MajorMinorVersion > 1100 BEGIN
 	SET @Columns += N'
 	,vfs.[io_stall_queued_read_ms] AS [rg_read_stall_ms]
 	,vfs.[io_stall_queued_write_ms] AS [rg_write_stall_ms]'
+END
+
+IF @EngineEdition = 5 -- Azure SQL Database (Database-as-a-Service)
+BEGIN
+    -- For Azure SQL Database, use sys.database_files
+    SET @JoinClause = N'
+INNER JOIN sys.database_files AS mf WITH (NOLOCK)
+	ON vfs.[database_id] = DB_ID() AND vfs.[file_id] = mf.[file_id]';
+END
+ELSE -- All other editions
+BEGIN
+    -- For instance-level editions, use sys.master_files
+    SET @JoinClause = N'
+INNER JOIN sys.master_files AS mf WITH (NOLOCK)
+	ON vfs.[database_id] = mf.[database_id] AND vfs.[file_id] = mf.[file_id]';
 END
 
 SET @SqlStatement = N'
@@ -47,9 +64,8 @@ SELECT
 	,vfs.[num_of_writes] AS [writes]
 	,vfs.[num_of_bytes_written] AS [write_bytes]'
 	+ @Columns + N'
-FROM sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
-INNER JOIN sys.master_files AS mf WITH (NOLOCK)
-	ON vfs.[database_id] = mf.[database_id] AND vfs.[file_id] = mf.[file_id]
+FROM sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs'
++ @JoinClause + N'
 %s'
 + @Tables;
 
@@ -67,8 +83,8 @@ func getSQLServerDatabaseIOQuery(instanceName string) string {
 
 const sqlServerPerformanceCountersQuery string = `
 SET DEADLOCK_PRIORITY -10;
-IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4) BEGIN /*NOT IN Standard,Enterprise,Express*/
-	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise or Express. This query is only supported on these editions.';
+IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4,5,8) BEGIN /*NOT IN Standard,Enterprise,Express,Azure SQL Database, Azure SQL Managed Instance*/
+	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise, Express, Azure SQL Database or Azure SQL Managed Instance. This query is only supported on these editions.';
 	RAISERROR (@ErrorMessage,11,1)
 	RETURN
 END
@@ -279,16 +295,24 @@ func getSQLServerPerformanceCounterQuery(instanceName string) string {
 
 const sqlServerProperties = `
 SET DEADLOCK_PRIORITY -10;
-IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4) BEGIN /*NOT IN Standard, Enterprise, Express*/
-	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise or Express. This query is only supported on these editions.';
+IF SERVERPROPERTY('EngineEdition') NOT IN (2,3,4,5,8) BEGIN /*NOT IN Standard,Enterprise,Express,Azure SQL Database, Azure SQL Managed Instance*/
+	DECLARE @ErrorMessage AS nvarchar(500) = 'Connection string Server:'+ @@ServerName + ',Database:' + DB_NAME() +' is not a SQL Server Standard, Enterprise, Express, Azure SQL Database or Azure SQL Managed Instance. This query is only supported on these editions.';
 	RAISERROR (@ErrorMessage,11,1)
 	RETURN
 END
 
 DECLARE
 	 @SqlStatement AS nvarchar(max) = ''
+	,@EngineEdition INT = CAST(SERVERPROPERTY('EngineEdition') AS INT)
 	,@MajorMinorVersion AS int = CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),4) AS int)*100 + CAST(PARSENAME(CAST(SERVERPROPERTY('ProductVersion') AS nvarchar),3) AS int)
 	,@Columns AS nvarchar(MAX) = ''
+	-- variables that are unavailable on EngineEdition 5 or 8
+	,@ServiceName NVARCHAR(MAX) = ''
+	,@ServerMemory BIGINT = 0
+	,@AvailableServerMemory BIGINT = 0
+	,@ForceEncryption INT = 0
+	,@DynamicportNo NVARCHAR(50) = NULL
+	,@StaticportNo NVARCHAR(50) = NULL
 
 IF CAST(SERVERPROPERTY('ProductVersion') AS varchar(50)) >= '10.50.2500.0'
 	SET @Columns = N'
@@ -297,11 +321,18 @@ IF CAST(SERVERPROPERTY('ProductVersion') AS varchar(50)) >= '10.50.2500.0'
 		ELSE [virtual_machine_type_desc]
 	END AS [hardware_type]'
 
-SET @SqlStatement = '
-DECLARE @ForceEncryption INT
-DECLARE @DynamicportNo NVARCHAR(50);
-DECLARE @StaticportNo NVARCHAR(50);
+IF @EngineEdition IN (2, 3, 4, 8)
+BEGIN
+-- Populate physical memory details using sys.dm_os_sys_memory (only available on 2,3,4,8)
+SELECT
+	   @ServerMemory = total_physical_memory_kb
+	  ,@AvailableServerMemory = available_physical_memory_kb
+FROM sys.dm_os_sys_memory
 
+SET @ServiceName = @@SERVICENAME
+
+IF @EngineEdition IN (2, 3, 4)
+BEGIN
 EXEC [xp_instance_regread]
 	 @rootkey = ''HKEY_LOCAL_MACHINE''
 	,@key = ''SOFTWARE\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib''
@@ -319,15 +350,18 @@ EXEC [xp_instance_regread]
      ,@key = ''Software\Microsoft\Microsoft SQL Server\MSSQLServer\SuperSocketNetLib\Tcp\IpAll''
      ,@value_name = ''TcpPort''
      ,@value = @StaticportNo OUTPUT
+END
+END
 
+SET @SqlStatement = '
 SELECT
 	 ''sqlserver_server_properties'' AS [measurement]
 	,REPLACE(@@SERVERNAME,''\'','':'') AS [sql_instance]
 	,HOST_NAME() AS [computer_name]
-	,@@SERVICENAME AS [service_name]
+	,@ServiceName AS [service_name] -- Will be empty on Azure SQL DB (5)
 	,si.[cpu_count]
-	,(SELECT [total_physical_memory_kb] FROM sys.[dm_os_sys_memory]) AS [server_memory]
-	,(SELECT [available_physical_memory_kb] FROM sys.[dm_os_sys_memory]) AS [available_server_memory]
+	,@ServerMemory AS [server_memory] -- Will be 0 on Azure SQL DB (5)
+	,@AvailableServerMemory AS [available_server_memory] -- Will be 0 on Azure SQL DB (5)
 	,SERVERPROPERTY(''Edition'') AS [sku]
 	,CAST(SERVERPROPERTY(''EngineEdition'') AS int) AS [engine_edition]
 	,DATEDIFF(MINUTE,si.[sqlserver_start_time],GETDATE()) AS [uptime]
@@ -335,9 +369,9 @@ SELECT
 	,SERVERPROPERTY(''IsClustered'') AS [instance_type]
 	,SERVERPROPERTY(''IsHadrEnabled'') AS [is_hadr_enabled]
 	,LEFT(@@VERSION,CHARINDEX('' - '',@@VERSION)) AS [sql_version_desc]
-	,@ForceEncryption AS [ForceEncryption]
-	,COALESCE(@DynamicportNo,@StaticportNo) AS [Port]
-	,IIF(@DynamicportNo IS NULL, ''Static'', ''Dynamic'') AS [PortType]
+	,@ForceEncryption AS [ForceEncryption] -- Will be 0 on Azure SQL DB/MI (5,8)
+	,COALESCE(@DynamicportNo,@StaticportNo, '') AS [Port] -- Will be empty on Azure SQL DB/MI (5,8)
+	,IIF(@DynamicportNo IS NOT NULL, ''Dynamic'', IIF(@StaticportNo IS NOT NULL, ''Static'', '') AS [PortType] -- Will be ''Dynamic'' or ''Static'' on 2,3,4, empty on 5,8 if ports are null
 	,dbs.[db_online]
 	,dbs.[db_restoring]
 	,dbs.[db_recovering]
@@ -358,7 +392,15 @@ SELECT
 	) AS dbs
 %s'
 
-EXEC sp_executesql @SqlStatement
+EXEC sp_executesql
+	 @SqlStatement
+	,N'@ServiceName NVARCHAR(MAX), @ServerMemory BIGINT, @AvailableServerMemory BIGINT, @ForceEncryption INT, @DynamicportNo NVARCHAR(50), @StaticportNo NVARCHAR(50)'
+	,@ServiceName = @ServiceName
+	,@ServerMemory = @ServerMemory
+	,@AvailableServerMemory = @AvailableServerMemory
+	,@ForceEncryption = @ForceEncryption
+	,@DynamicportNo = @DynamicportNo
+	,@StaticportNo = @StaticportNo
 `
 
 func getSQLServerPropertiesQuery(instanceName string) string {
