@@ -684,9 +684,14 @@ func (m *mySQLScraper) scrapeTopQueries(now pcommon.Timestamp, errs *scrapererro
 
 		queryPlan, _ := m.sqlclient.explainQuery(q.querySampleText, q.schemaName, nil, m.logger)
 
-		obfuscatedPlan, err := m.obfuscator.obfuscatePlan(queryPlan)
-		if err != nil {
-			m.logger.Error("Failed to obfuscate query", zap.Error(err))
+		var obfuscatedPlan string
+		var ok bool
+		if obfuscatedPlan, ok = m.queryPlanCache.Get(q.schemaName + "-" + q.digest); !ok {
+			obfuscatedPlan, err = m.obfuscator.obfuscatePlan(queryPlan)
+			if err != nil {
+				m.logger.Error("Failed to obfuscate query", zap.Error(err))
+			}
+			m.queryPlanCache.Add(q.schemaName+"-"+q.digest, obfuscatedPlan)
 		}
 
 		m.lb.RecordDbServerTopQueryEvent(

@@ -50,6 +50,8 @@ func createDefaultConfig() component.Config {
 			MaxQuerySampleCount: 1000,
 			TopQueryCount:       200,
 			CollectionInterval:  60 * time.Second,
+			QueryPlanCacheSize:  1000,
+			QueryPlanCacheTTL:   time.Hour,
 		},
 		QuerySampleCollection: QuerySampleCollection{
 			MaxRowsPerQuery: 100,
@@ -91,7 +93,7 @@ func createLogsReceiver(
 	if cfg.LogsBuilderConfig.Events.DbServerTopQuery.Enabled {
 		// we have 2 updated only attributes. so we set the cache size accordingly.
 		// TODO: parameterize this cache size.
-		ns := newMySQLScraper(params, cfg, newCache[int64](int(cfg.TopQueryCollection.MaxQuerySampleCount*2*2)), newTTLCache[string](1000, 100000*time.Millisecond))
+		ns := newMySQLScraper(params, cfg, newCache[int64](int(cfg.TopQueryCollection.MaxQuerySampleCount*2*2)), newTTLCache[string](cfg.TopQueryCollection.QueryPlanCacheSize, cfg.TopQueryCollection.QueryPlanCacheTTL))
 		s, err := scraper.NewLogs(
 			ns.scrapeTopQueryFunc,
 			scraper.WithStart(ns.start),

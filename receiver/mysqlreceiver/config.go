@@ -41,6 +41,8 @@ type TopQueryCollection struct {
 	MaxQuerySampleCount uint64        `mapstructure:"max_query_sample_count"`
 	TopQueryCount       uint64        `mapstructure:"top_query_count"`
 	CollectionInterval  time.Duration `mapstructure:"collection_interval"`
+	QueryPlanCacheSize  int           `mapstructure:"query_plan_cache_size"`
+	QueryPlanCacheTTL   time.Duration `mapstructure:"query_plan_cache_ttl"`
 
 	_ struct{}
 }
