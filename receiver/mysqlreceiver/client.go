@@ -13,6 +13,8 @@ import (
 	"text/template"
 	"time"
 
+	"go.uber.org/zap"
+
 	// registers the mysql driver
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/go-version"
@@ -30,6 +32,8 @@ type client interface {
 	getTableLockWaitEventStats() ([]tableLockWaitEventStats, error)
 	getReplicaStatusStats() ([]replicaStatusStats, error)
 	getQuerySamples(uint64) ([]querySample, error)
+	getTopQueries(uint64, uint64) ([]topQuery, error)
+	explainQuery(statement string, schema string, config *Config, logger *zap.Logger) (string, error)
 	Close() error
 }
 
@@ -206,6 +210,16 @@ type querySample struct {
 	eventID            int64
 	waitEvent          string
 	waitTime           float64
+}
+
+type topQuery struct {
+	schemaName      string
+	digest          string
+	digestText      string
+	countStar       int64
+	sumTimerWait    int64
+	querySampleText string
+	queryPlan       string
 }
 
 var _ client = (*mySQLClient)(nil)
@@ -689,6 +703,51 @@ func (c *mySQLClient) getReplicaStatusStats() ([]replicaStatusStats, error) {
 	return stats, nil
 }
 
+//go:embed templates/topQuery.tmpl
+var topQueryTemplate string
+
+func (c *mySQLClient) getTopQueries(topNValue uint64, lookbackTime uint64) ([]topQuery, error) {
+	tmpl := template.Must(template.New("topQuery").Option("missingkey=error").Parse(topQueryTemplate))
+	buf := bytes.Buffer{}
+
+	if err := tmpl.Execute(&buf, map[string]any{
+		"topNValue":    topNValue,
+		"lookbackTime": lookbackTime,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	rows, err := c.client.Query(buf.String())
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	ct, _ := rows.ColumnTypes()
+	for _, typ := range ct {
+		fmt.Printf("Column: %s, Type: %s, ScanType: %s\n", typ.Name(), typ.DatabaseTypeName(), typ.ScanType())
+	}
+
+	var topQueries []topQuery
+	for rows.Next() {
+		var tq topQuery
+		err := rows.Scan(
+			&tq.schemaName,
+			&tq.digest,
+			&tq.digestText,
+			&tq.countStar,
+			&tq.sumTimerWait,
+			&tq.querySampleText,
+		)
+		if err != nil {
+			return nil, err
+		}
+		topQueries = append(topQueries, tq)
+	}
+	return topQueries, nil
+}
+
 //go:embed templates/querySample.tmpl
 var querySampleTemplate string
 
@@ -733,6 +792,71 @@ func (c *mySQLClient) getQuerySamples(limit uint64) ([]querySample, error) {
 	}
 
 	return samples, nil
+}
+
+// explainQuery implements client.
+func (c *mySQLClient) explainQuery(statement string, schema string, config *Config, logger *zap.Logger) (string, error) {
+	if strings.HasSuffix(statement, "...") {
+		logger.Warn("statement is truncated, skipping explain", zap.String("statement", statement))
+		return "", nil
+	}
+
+	if !isQueryExplainable(statement) {
+		fmt.Printf("query is not explainable: %s\n", statement)
+		return "", nil
+	}
+
+	sqlclient, err := sql.Open("mysql", c.connStr)
+	if err != nil {
+		fmt.Printf("unable to connect to database for explain: %v\n", err)
+		return "", nil
+	}
+
+	if schema != "" {
+		_, err := sqlclient.Exec(fmt.Sprintf("/* otel-collector-ignore */ USE %s;", schema))
+		if err != nil {
+			fmt.Printf("unable to use schema %s: %v\n", schema, err)
+			return "", nil
+		}
+	}
+
+	var plan string
+	err = sqlclient.QueryRow(fmt.Sprintf("EXPLAIN FORMAT=json %s", statement)).Scan(&plan)
+	if err != nil {
+		fmt.Printf("unable to execute explain statement: %v\n", err.Error())
+		// fmt.Println(explainStatement)
+		return "", nil
+	}
+	fmt.Println("Explain statement executed successfully:", plan)
+	return plan, nil
+}
+
+func isQueryExplainable(query string) bool {
+	sqlStartingKeywords := []string{
+		"select",
+		"table",
+		"delete",
+		"insert",
+		"replace",
+		"update",
+		"with",
+	}
+
+	// Trim leading and trailing whitespace from the query
+	trimmedQuery := strings.TrimSpace(query)
+
+	// Convert the trimmed query to lowercase for case-insensitive comparison
+	lowerQuery := strings.ToLower(trimmedQuery)
+
+	// Iterate through the predefined keywords
+	for _, keyword := range sqlStartingKeywords {
+		// Check if the query starts with the current keyword
+		// No need to ToLower(keyword) here because sqlStartingKeywords is already lowercased
+		if strings.HasPrefix(lowerQuery, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 func query(c mySQLClient, query string) (map[string]string, error) {
