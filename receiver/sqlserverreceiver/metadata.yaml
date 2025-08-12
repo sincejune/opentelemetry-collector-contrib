@@ -18,11 +18,11 @@ resource_attributes:
     type: string
   sqlserver.instance.name:
     description: The name of the SQL Server instance being monitored.
-    enabled: false
+    enabled: true
     type: string
   sqlserver.computer.name:
     description: The name of the SQL Server instance being monitored.
-    enabled: false
+    enabled: true
     type: string
   server.address:
     description: Name of the database host.
@@ -34,6 +34,10 @@ resource_attributes:
     type: int
   host.name:
     description: The host name of SQL Server
+    enabled: true
+    type: string
+  service.instance.id:
+    description:  a logical identifier for the service instance
     enabled: true
     type: string
 

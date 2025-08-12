@@ -163,6 +163,9 @@ func TestLoadConfig(t *testing.T) {
 				ServerPort: metadata.ResourceAttributeConfig{
 					Enabled: true,
 				},
+				ServiceInstanceID: metadata.ResourceAttributeConfig{
+					Enabled: true,
+				},
 			},
 		}
 		expected.LogsBuilderConfig = metadata.LogsBuilderConfig{
@@ -191,6 +194,9 @@ func TestLoadConfig(t *testing.T) {
 					Enabled: true,
 				},
 				ServerPort: metadata.ResourceAttributeConfig{
+					Enabled: true,
+				},
+				ServiceInstanceID: metadata.ResourceAttributeConfig{
 					Enabled: true,
 				},
 			},

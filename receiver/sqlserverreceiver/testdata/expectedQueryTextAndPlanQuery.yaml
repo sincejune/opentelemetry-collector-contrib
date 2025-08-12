@@ -10,6 +10,9 @@ resourceLogs:
         - key: sqlserver.instance.name
           value:
             stringValue: sqlserver
+        - key: service.instance.id
+          value:
+            stringValue: 0.0.0.0:1433
     scopeLogs:
       - logRecords:
           - attributes:
